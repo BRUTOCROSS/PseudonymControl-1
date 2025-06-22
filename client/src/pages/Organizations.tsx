@@ -122,8 +122,8 @@ export default function Organizations() {
             </p>
           </div>
 
-          {/* Call-to-Action for non-members */}
-          {!user?.organizationId && organizations && (
+          {/* Call-to-Action for non-members - Always show if user has no org */}
+          {!user?.organizationId && (
             <div className="mb-8 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-8">
               <div className="text-center">
                 <Building className="h-12 w-12 text-blue-600 mx-auto mb-4" />
