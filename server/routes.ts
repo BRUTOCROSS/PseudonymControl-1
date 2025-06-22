@@ -377,6 +377,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chat endpoint
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { message, chatHistory = [] } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      // Import getChatResponse from gemini service
+      const { getChatResponse } = await import("./services/gemini");
+      
+      const response = await getChatResponse(message, chatHistory);
+      
+      res.json({ response });
+    } catch (error) {
+      console.error("Chat error:", error);
+      res.status(500).json({ message: "Failed to get chat response" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

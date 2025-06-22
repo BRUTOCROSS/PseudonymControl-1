@@ -101,8 +101,13 @@ PseudoResolve is a full-stack web application for anonymous workplace complaint 
 - **AI Service**: `GEMINI_API_KEY` for Google AI integration
 - **Sessions**: `SESSION_SECRET` for secure session management
 
-## Changelog
-- June 22, 2025. Initial setup
+## Recent Changes
+- June 22, 2025: Fixed organization creation API with proper schema validation
+- June 22, 2025: Added complete chatbot functionality with Gemini AI integration
+- June 22, 2025: Implemented organization create/join features in UI with proper modals
+- June 22, 2025: Created missing UI utility functions and component imports
+- June 22, 2025: Added chat API endpoint with intent detection and response system
+- June 22, 2025: Enhanced complaint submission with AI-powered categorization
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

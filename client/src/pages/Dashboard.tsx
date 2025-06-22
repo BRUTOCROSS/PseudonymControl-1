@@ -5,10 +5,11 @@ import Sidebar from "@/components/Sidebar";
 import ComplaintForm from "@/components/ComplaintForm";
 import ComplaintCard from "@/components/ComplaintCard";
 import AdminDashboard from "@/components/AdminDashboard";
+import Chatbot from "@/components/Chatbot";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Plus, Building } from "lucide-react";
+import { Bell, Plus, Building, MessageCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ import {
 export default function Dashboard() {
   const [showComplaintForm, setShowComplaintForm] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showChatbot, setShowChatbot] = useState(false);
   const { user } = useAuth();
 
   const { data: complaints = [] } = useQuery({
@@ -321,6 +323,11 @@ export default function Dashboard() {
       <ComplaintForm 
         open={showComplaintForm} 
         onClose={() => setShowComplaintForm(false)} 
+      />
+
+      <Chatbot 
+        isOpen={showChatbot}
+        onToggle={() => setShowChatbot(!showChatbot)}
       />
     </div>
   );
