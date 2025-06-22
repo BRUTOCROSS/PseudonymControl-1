@@ -1,169 +1,109 @@
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
-  Home, 
-  MessageSquare, 
-  Plus, 
   Building, 
+  MessageSquare, 
+  BarChart3, 
   Settings, 
-  Shield,
-  BarChart3,
   LogOut,
-  Bell
+  Users,
+  Shield
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 
-export default function Sidebar() {
-  const [location] = useLocation();
+interface SidebarProps {
+  userRole?: string;
+}
+
+export default function Sidebar({ userRole = "user" }: SidebarProps) {
   const { user, logout } = useAuth();
 
-  const { data: complaints = [] } = useQuery({
-    queryKey: ["/api/complaints"],
-    enabled: !!user,
-  });
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
-  const { data: notifications = [] } = useQuery({
-    queryKey: ["/api/notifications"],
-    enabled: !!user,
-  });
-
-  const userComplaints = user?.isAdmin ? complaints : complaints.filter((c: any) => c.userId === user?.id);
-  const unreadNotifications = notifications.filter((n: any) => !n.isRead);
-
-  const isActive = (path: string) => location === path;
-
-  if (!user) return null;
+  const navItems = [
+    {
+      href: "/",
+      icon: BarChart3,
+      label: "Dashboard",
+      show: true
+    },
+    {
+      href: "/complaints",
+      icon: MessageSquare,
+      label: "Complaints",
+      show: true
+    },
+    {
+      href: "/organizations",
+      icon: Building,
+      label: "Organizations",
+      show: true
+    },
+    {
+      href: "/settings",
+      icon: Settings,
+      label: "Settings",
+      show: true
+    }
+  ];
 
   return (
-    <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg border-r border-neutral-200 lg:translate-x-0">
-      {/* Header */}
-      <div className="flex items-center justify-center px-6 py-8 border-b border-neutral-200">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-            <Shield className="text-white" size={20} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-neutral-800">PseudoResolve</h1>
-            <p className="text-xs text-neutral-500">Anonymous Complaints</p>
-          </div>
-        </div>
+    <div className="flex h-full w-64 flex-col bg-white border-r">
+      <div className="flex h-16 items-center px-6 border-b">
+        <h1 className="text-xl font-bold text-primary">PseudoResolve</h1>
       </div>
-
-      {/* User Profile */}
-      <div className="px-6 py-4 border-b border-neutral-100">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-white font-medium text-sm">
-              {user.pseudonym.charAt(0)}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-neutral-700 truncate">
-              {user.pseudonym}
-            </p>
-            <div className="flex items-center space-x-1">
-              <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-              <span className="text-xs text-neutral-500">Online</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="px-3 py-4 space-y-1 flex-1">
-        <Link href="/dashboard">
-          <a className={cn(
-            "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-            isActive("/dashboard") || isActive("/") 
-              ? "bg-primary text-white" 
-              : "text-neutral-700 hover:bg-neutral-100"
-          )}>
-            <Home className="mr-3" size={16} />
-            Dashboard
-          </a>
-        </Link>
-
-        <Link href="/complaints">
-          <a className={cn(
-            "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-            isActive("/complaints") 
-              ? "bg-primary text-white" 
-              : "text-neutral-700 hover:bg-neutral-100"
-          )}>
-            <MessageSquare className="mr-3" size={16} />
-            My Complaints
-            {userComplaints.length > 0 && (
-              <Badge variant="secondary" className="ml-auto">
-                {userComplaints.length}
-              </Badge>
-            )}
-          </a>
-        </Link>
-
-        <Link href="/organizations">
-          <a className={cn(
-            "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-            isActive("/organizations") 
-              ? "bg-primary text-white" 
-              : "text-neutral-700 hover:bg-neutral-100"
-          )}>
-            <Building className="mr-3" size={16} />
-            Organizations
-          </a>
-        </Link>
-
-        {user.isAdmin && (
-          <div className="pt-4 border-t border-neutral-200 mt-4">
-            <p className="px-3 text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
-              Administration
-            </p>
-            <Link href="/admin">
-              <a className={cn(
-                "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                isActive("/admin") 
-                  ? "bg-primary text-white" 
-                  : "text-neutral-700 hover:bg-neutral-100"
-              )}>
-                <BarChart3 className="mr-3" size={16} />
-                Admin Dashboard
-                {complaints.filter((c: any) => c.status === 'escalated').length > 0 && (
-                  <Badge variant="destructive" className="ml-auto">
-                    {complaints.filter((c: any) => c.status === 'escalated').length}
-                  </Badge>
+      
+      <div className="flex-1 overflow-y-auto py-6">
+        <nav className="space-y-1 px-3">
+          {navItems
+            .filter(item => item.show)
+            .map((item) => (
+              <Link key={item.href} href={item.href}>
+                {(params) => (
+                  <div
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                      params.href === item.href || (item.href === "/" && params.href === "")
+                        ? "bg-primary text-primary-foreground"
+                        : "text-gray-700 hover:bg-gray-100"
+                    )}
+                  >
+                    <item.icon className="mr-3 h-5 w-5" />
+                    {item.label}
+                  </div>
                 )}
-              </a>
-            </Link>
-          </div>
-        )}
-
-        <Link href="/settings">
-          <a className={cn(
-            "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-            isActive("/settings") 
-              ? "bg-primary text-white" 
-              : "text-neutral-700 hover:bg-neutral-100"
-          )}>
-            <Settings className="mr-3" size={16} />
-            Settings
-          </a>
-        </Link>
-      </nav>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-neutral-200">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={logout}
-          className="w-full justify-start"
-        >
-          <LogOut className="mr-2" size={16} />
-          Logout
-        </Button>
+              </Link>
+            ))}
+        </nav>
       </div>
+
+      {user && (
+        <div className="border-t p-4">
+          <div className="mb-3">
+            <p className="text-sm font-medium text-gray-900">{user.pseudonym}</p>
+            <p className="text-xs text-gray-500">{user.username}</p>
+            {user.isAdmin && (
+              <div className="flex items-center mt-1">
+                <Shield className="h-3 w-3 text-blue-500 mr-1" />
+                <span className="text-xs text-blue-500">Admin</span>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+          >
+            <LogOut className="mr-3 h-5 w-5" />
+            Sign Out
+          </button>
+        </div>
+      )}
     </div>
   );
 }

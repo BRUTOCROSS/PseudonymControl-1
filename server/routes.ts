@@ -163,18 +163,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Organization routes
-  app.post("/api/organizations", requireAuth, async (req, res) => {
+  app.post("/api/organizations", async (req, res) => {
     try {
-      const data = insertOrganizationSchema.parse(req.body);
-      data.accessKey = nanoid(12);
+      const requestData = req.body;
+      requestData.accessKey = nanoid(12);
+      const data = insertOrganizationSchema.parse(requestData);
       
       const organization = await storage.createOrganization(data);
       
-      // Update user to be admin of this organization
-      await storage.updateUser(req.session.userId!, { 
-        organizationId: organization.id,
-        isAdmin: true 
-      });
+      // If user is logged in, make them admin of this organization
+      if (req.session.userId) {
+        await storage.updateUser(req.session.userId, { 
+          organizationId: organization.id,
+          isAdmin: true 
+        });
+      }
 
       res.json(organization);
     } catch (error) {
