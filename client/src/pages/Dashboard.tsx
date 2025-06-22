@@ -296,6 +296,24 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
+              {/* Chatbot Access */}
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold text-neutral-800 mb-4">Need Help?</h3>
+                  <p className="text-sm text-neutral-600 mb-4">
+                    Chat with our AI assistant for guidance on complaints and workplace issues.
+                  </p>
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => setShowChatbot(true)}
+                  >
+                    <MessageCircle className="mr-2" size={16} />
+                    Open Chat Assistant
+                  </Button>
+                </CardContent>
+              </Card>
+
               {/* Category Distribution */}
               {stats?.byCategory && (
                 <Card>
