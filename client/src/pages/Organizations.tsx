@@ -24,7 +24,7 @@ export default function Organizations() {
 
   const { data: organizations = [] } = useQuery({
     queryKey: ["/api/organizations"],
-  });
+  }) as { data: Organization[] };
 
   const createOrgMutation = useMutation({
     mutationFn: async (data: { name: string; description?: string }) => {
@@ -187,14 +187,17 @@ export default function Organizations() {
                       </DialogHeader>
                       <form onSubmit={handleJoinOrg} className="space-y-4">
                         <div>
-                          <Label htmlFor="join-accessKey">Access Key</Label>
+                          <Label htmlFor="join-accessKey">Organization Access Key</Label>
                           <Input
                             id="join-accessKey"
                             name="accessKey"
                             required
-                            placeholder="Enter 12-character access key"
+                            placeholder="Enter the 12-character organization key"
                             className="font-mono"
                           />
+                          <p className="text-xs text-neutral-500 mt-1">
+                            Ask your organization administrator for the access key
+                          </p>
                         </div>
                         <div className="flex justify-end space-x-2">
                           <Button type="button" variant="outline" onClick={() => setShowJoinDialog(false)}>

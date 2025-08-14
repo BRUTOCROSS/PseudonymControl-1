@@ -176,6 +176,9 @@ export default function Landing() {
                           required
                           placeholder="Choose a username"
                         />
+                        <p className="text-xs text-neutral-500 mt-1">
+                          You'll use this to log in securely
+                        </p>
                       </div>
                       <div>
                         <Label htmlFor="register-password">Password</Label>
@@ -186,6 +189,9 @@ export default function Landing() {
                           required
                           placeholder="Create a password"
                         />
+                        <p className="text-xs text-neutral-500 mt-1">
+                          Choose a strong password for security
+                        </p>
                       </div>
                       <div>
                         <Label htmlFor="register-org-key">Organization Access Key (Optional)</Label>
@@ -193,10 +199,11 @@ export default function Landing() {
                           id="register-org-key"
                           name="organizationAccessKey"
                           type="text"
-                          placeholder="Enter organization key if you have one"
+                          placeholder="Enter 12-character organization key"
+                          className="font-mono"
                         />
                         <p className="text-xs text-neutral-500 mt-1">
-                          Leave blank if you'll create or join an organization later
+                          Skip if you'll create or join an organization later
                         </p>
                       </div>
                       <Button type="submit" className="w-full" disabled={isLoading}>
