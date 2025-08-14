@@ -8,6 +8,7 @@ import { useAuth } from "./hooks/useAuth";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Organizations from "./pages/Organizations";
+import OrganizationSetup from "./pages/OrganizationSetup";
 import Complaints from "./pages/Complaints";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/not-found";
@@ -27,6 +28,11 @@ function Router() {
     <Switch>
       {!user ? (
         <Route path="/" component={Landing} />
+      ) : !user.organizationId ? (
+        <>
+          <Route path="/" component={OrganizationSetup} />
+          <Route component={OrganizationSetup} />
+        </>
       ) : (
         <>
           <Route path="/" component={Dashboard} />
