@@ -68,9 +68,9 @@ export default function Sidebar({ userRole = "user" }: SidebarProps) {
               const isActive = location === item.href || (item.href === "/" && location === "/");
               return (
                 <Link key={item.href} href={item.href}>
-                  <a
+                  <div
                     className={cn(
-                      "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer",
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-gray-700 hover:bg-gray-100"
@@ -78,7 +78,7 @@ export default function Sidebar({ userRole = "user" }: SidebarProps) {
                   >
                     <item.icon className="mr-3 h-5 w-5" />
                     {item.label}
-                  </a>
+                  </div>
                 </Link>
               );
             })}

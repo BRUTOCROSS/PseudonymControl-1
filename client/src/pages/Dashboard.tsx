@@ -26,21 +26,29 @@ export default function Dashboard() {
   const { data: complaints = [] } = useQuery({
     queryKey: ["/api/complaints"],
     enabled: !!user,
+    staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false,
   });
 
   const { data: stats } = useQuery({
     queryKey: ["/api/complaints/stats"],
     enabled: !!user,
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
   });
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["/api/notifications"],
     enabled: !!user,
+    staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false,
   });
 
   const { data: organizations = [] } = useQuery({
     queryKey: ["/api/organizations"],
     enabled: !!user,
+    staleTime: 300000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
 
   const unreadNotifications = notifications.filter((n: any) => !n.isRead);

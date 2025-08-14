@@ -91,7 +91,7 @@ export default function ComplaintForm({ open, onClose }: ComplaintFormProps) {
       const timeout = setTimeout(() => {
         // Mock AI suggestion based on content keywords
         let suggestion = { category: "other", similarityGroup: "general-concerns" };
-        
+
         const lowerContent = content.toLowerCase();
         if (lowerContent.includes("hr") || lowerContent.includes("harassment") || lowerContent.includes("salary")) {
           suggestion = { category: "hr", similarityGroup: "workplace-culture" };
@@ -104,10 +104,10 @@ export default function ComplaintForm({ open, onClose }: ComplaintFormProps) {
         } else if (lowerContent.includes("management") || lowerContent.includes("manager") || lowerContent.includes("decision")) {
           suggestion = { category: "management", similarityGroup: "leadership-issues" };
         }
-        
+
         setAiSuggestion(suggestion);
       }, 1500);
-      
+
       return () => clearTimeout(timeout);
     }
   }, [content, aiSuggestion]);
