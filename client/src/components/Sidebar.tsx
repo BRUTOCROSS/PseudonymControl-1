@@ -1,11 +1,11 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
-import { 
-  Building, 
-  MessageSquare, 
-  BarChart3, 
-  Settings, 
+import {
+  Building,
+  MessageSquare,
+  BarChart3,
+  Settings,
   LogOut,
   Users,
   Shield
@@ -17,6 +17,7 @@ interface SidebarProps {
 
 export default function Sidebar({ userRole = "user" }: SidebarProps) {
   const { user, logout } = useAuth();
+  const [location] = useLocation();
 
   const handleLogout = async () => {
     try {
@@ -58,7 +59,7 @@ export default function Sidebar({ userRole = "user" }: SidebarProps) {
       <div className="flex h-16 items-center px-6 border-b">
         <h1 className="text-xl font-bold text-primary">PseudoResolve</h1>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto py-6">
         <nav className="space-y-1 px-3">
           {navItems
