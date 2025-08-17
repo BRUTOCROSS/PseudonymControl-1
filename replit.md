@@ -102,12 +102,13 @@ PseudoResolve is a full-stack web application for anonymous workplace complaint 
 - **Sessions**: `SESSION_SECRET` for secure session management
 
 ## Recent Changes
-- August 12, 2025: Fixed database authentication issues and created new PostgreSQL database
-- August 12, 2025: User registration and login system now fully functional
-- August 12, 2025: Added floating chatbot button for easy access to AI assistant
-- August 12, 2025: Organization create/join features fully implemented with visible UI buttons
-- August 12, 2025: Complete Gemini AI integration for complaint categorization and chat responses
-- August 12, 2025: All core features working: authentication, organizations, complaints, chatbot
+- August 17, 2025: Implemented organization switching functionality for multi-organization users
+- August 17, 2025: Created separate Admin and User dashboards with role-based routing
+- August 17, 2025: Added 3-option organization management (Create, Join, My Organizations) in sidebar
+- August 17, 2025: Organization creation now includes threshold percentage setting
+- August 17, 2025: Users can now be admin in one org and member in another
+- August 17, 2025: Dashboard only accessible after selecting an organization
+- August 17, 2025: AI chatbot integrated with user dashboard for complaint submission
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.

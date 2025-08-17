@@ -216,6 +216,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/organizations/switch", requireAuth, async (req, res) => {
+    try {
+      const { organizationId } = req.body;
+      
+      // Verify user has access to this organization
+      const organization = await storage.getOrganization(organizationId);
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Update user's current organization
+      await storage.updateUser(req.session.userId!, { 
+        organizationId: organization.id 
+      });
+
+      res.json({ message: "Organization switched successfully" });
+    } catch (error) {
+      console.error("Switch organization error:", error);
+      res.status(500).json({ message: "Failed to switch organization" });
+    }
+  });
+
+  app.get("/api/user/organizations", requireAuth, async (req, res) => {
+    try {
+      // For now, return all organizations (you might want to implement user-organization relationships)
+      const organizations = await storage.getAllOrganizations();
+      res.json(organizations);
+    } catch (error) {
+      console.error("Get user organizations error:", error);
+      res.status(500).json({ message: "Failed to fetch user organizations" });
+    }
+  });
+
   // Complaint routes
   app.post("/api/complaints", requireAuth, async (req, res) => {
     try {
