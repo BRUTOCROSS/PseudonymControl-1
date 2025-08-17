@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Organization routes
-  app.post("/api/organizations", async (req, res) => {
+  app.post("/api/organizations", requireAuth, async (req, res) => {
     try {
       const requestData = req.body;
       requestData.accessKey = nanoid(12);
@@ -171,13 +171,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const organization = await storage.createOrganization(data);
       
-      // If user is logged in, make them admin of this organization
-      if (req.session.userId) {
-        await storage.updateUser(req.session.userId, { 
-          organizationId: organization.id,
-          isAdmin: true 
-        });
-      }
+      // Make the creator an admin in the user-organization relationship
+      await storage.addUserToOrganization(req.session.userId!, organization.id, 'admin');
+      
+      // Update user's current organization
+      await storage.updateUser(req.session.userId!, { 
+        organizationId: organization.id,
+        isAdmin: true 
+      });
 
       res.json(organization);
     } catch (error) {
@@ -205,8 +206,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organization not found" });
       }
 
+      // Add user as a member to the organization
+      await storage.addUserToOrganization(req.session.userId!, organization.id, 'member');
+
+      // Update user's current organization
       await storage.updateUser(req.session.userId!, { 
-        organizationId: organization.id 
+        organizationId: organization.id,
+        isAdmin: false
       });
 
       res.json(organization);
@@ -226,9 +232,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organization not found" });
       }
 
-      // Update user's current organization
+      // Get user's role in the organization
+      const userRole = await storage.getUserRoleInOrganization(req.session.userId!, organizationId);
+      if (userRole === 'none') {
+        return res.status(403).json({ message: "You don't have access to this organization" });
+      }
+
+      // Update user's current organization and admin status based on role
       await storage.updateUser(req.session.userId!, { 
-        organizationId: organization.id 
+        organizationId: organization.id,
+        isAdmin: userRole === 'admin'
       });
 
       res.json({ message: "Organization switched successfully" });
@@ -240,9 +253,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/user/organizations", requireAuth, async (req, res) => {
     try {
-      // For now, return all organizations (you might want to implement user-organization relationships)
-      const organizations = await storage.getAllOrganizations();
-      res.json(organizations);
+      // Return only organizations the user is a member of
+      const userOrganizations = await storage.getUserOrganizations(req.session.userId!);
+      res.json(userOrganizations);
     } catch (error) {
       console.error("Get user organizations error:", error);
       res.status(500).json({ message: "Failed to fetch user organizations" });

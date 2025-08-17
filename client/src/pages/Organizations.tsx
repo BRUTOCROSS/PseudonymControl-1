@@ -160,10 +160,9 @@ export default function Organizations() {
     setTimeout(() => setCopiedKey(""), 2000);
   };
 
-  const getUserRoleInOrganization = (organizationId: number) => {
-    // This would need to be implemented based on your user-organization relationship
-    // For now, using a simple check based on current user data
-    return user?.isAdmin && user?.organizationId === organizationId ? 'admin' : 'member';
+  const getUserRoleInOrganization = (org: any) => {
+    // Get role from the user-organization relationship data
+    return org.role || 'member';
   };
 
   return (
@@ -341,7 +340,7 @@ export default function Organizations() {
               {Array.isArray(userOrganizations) && userOrganizations.length > 0 ? (
                 <div className="space-y-4">
                   {userOrganizations.map((org: any) => {
-                    const userRole = getUserRoleInOrganization(org.id);
+                    const userRole = getUserRoleInOrganization(org);
                     const isCurrentOrg = user?.organizationId === org.id;
                     
                     return (

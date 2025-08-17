@@ -64,6 +64,15 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// User-Organization relationship table to track memberships and roles
+export const userOrganizations = pgTable("user_organizations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  role: text("role").notNull().default("member"), // "admin" or "member"
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one, many }) => ({
   organization: one(organizations, {
@@ -154,3 +163,7 @@ export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertComplaint = z.infer<typeof insertComplaintSchema>;
 export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export const insertUserOrganizationSchema = createInsertSchema(userOrganizations);
+export type UserOrganization = typeof userOrganizations.$inferSelect;
+export type InsertUserOrganization = z.infer<typeof insertUserOrganizationSchema>;

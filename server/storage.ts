@@ -1,7 +1,7 @@
 import {
-  users, organizations, complaints, feedbacks, notifications,
-  type User, type Organization, type Complaint, type Feedback, type Notification,
-  type InsertUser, type InsertOrganization, type InsertComplaint, type InsertFeedback, type InsertNotification
+  users, organizations, complaints, feedbacks, notifications, userOrganizations,
+  type User, type Organization, type Complaint, type Feedback, type Notification, type UserOrganization,
+  type InsertUser, type InsertOrganization, type InsertComplaint, type InsertFeedback, type InsertNotification, type InsertUserOrganization
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, count, sql } from "drizzle-orm";
@@ -43,6 +43,11 @@ export interface IStorage {
   markNotificationAsRead(id: number): Promise<Notification | undefined>;
   getNotificationsByUserId(userId: number): Promise<Notification[]>;
   getNotificationsByOrganizationId(organizationId: number): Promise<Notification[]>;
+
+  // User-Organization operations
+  getUserOrganizations(userId: number): Promise<any[]>;
+  getUserRoleInOrganization(userId: number, organizationId: number): Promise<string>;
+  addUserToOrganization(userId: number, organizationId: number, role: string): Promise<UserOrganization>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -236,6 +241,46 @@ export class DatabaseStorage implements IStorage {
       .from(notifications)
       .where(eq(notifications.organizationId, organizationId))
       .orderBy(desc(notifications.createdAt));
+  }
+
+  // User-Organization operations
+  async getUserOrganizations(userId: number): Promise<any[]> {
+    const result = await db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        description: organizations.description,
+        accessKey: organizations.accessKey,
+        thresholdPercentage: organizations.thresholdPercentage,
+        createdAt: organizations.createdAt,
+        role: userOrganizations.role,
+        joinedAt: userOrganizations.joinedAt
+      })
+      .from(userOrganizations)
+      .innerJoin(organizations, eq(userOrganizations.organizationId, organizations.id))
+      .where(eq(userOrganizations.userId, userId));
+    return result;
+  }
+
+  async getUserRoleInOrganization(userId: number, organizationId: number): Promise<string> {
+    const result = await db
+      .select({ role: userOrganizations.role })
+      .from(userOrganizations)
+      .where(and(eq(userOrganizations.userId, userId), eq(userOrganizations.organizationId, organizationId)));
+    
+    return result[0]?.role || 'none';
+  }
+
+  async addUserToOrganization(userId: number, organizationId: number, role: string): Promise<UserOrganization> {
+    const [userOrg] = await db
+      .insert(userOrganizations)
+      .values({ userId, organizationId, role })
+      .onConflictDoUpdate({
+        target: [userOrganizations.userId, userOrganizations.organizationId],
+        set: { role }
+      })
+      .returning();
+    return userOrg;
   }
 }
 
