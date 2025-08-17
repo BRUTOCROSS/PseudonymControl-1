@@ -23,7 +23,7 @@ export default function OrganizationSetup() {
   });
 
   const createOrgMutation = useMutation({
-    mutationFn: async (data: { name: string; description?: string }) => {
+    mutationFn: async (data: { name: string; description?: string; thresholdPercentage?: number }) => {
       const response = await apiRequest("POST", "/api/organizations", data);
       if (!response.ok) {
         const errorData = await response.json();
@@ -81,10 +81,12 @@ export default function OrganizationSetup() {
     const formData = new FormData(e.currentTarget);
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
+    const thresholdPercentage = parseInt(formData.get("thresholdPercentage") as string) || 15;
 
     createOrgMutation.mutate({
       name,
       description: description || undefined,
+      thresholdPercentage,
     });
   };
 
@@ -168,6 +170,22 @@ export default function OrganizationSetup() {
                         placeholder="Brief description of your organization"
                         rows={3}
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor="create-threshold">Threshold Percentage</Label>
+                      <Input
+                        id="create-threshold"
+                        name="thresholdPercentage"
+                        type="number"
+                        min="1"
+                        max="100"
+                        defaultValue="15"
+                        required
+                        placeholder="15"
+                      />
+                      <p className="text-xs text-neutral-500 mt-1">
+                        When this percentage of similar complaints is reached, they will be escalated
+                      </p>
                     </div>
                     <div className="flex justify-end space-x-2">
                       <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
@@ -261,7 +279,13 @@ export default function OrganizationSetup() {
               ) : (
                 <p className="text-sm text-neutral-500 mb-4">No organizations yet</p>
               )}
-              <Button variant="outline" size="lg" className="w-full" disabled={!Array.isArray(organizations) || organizations.length === 0}>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="w-full" 
+                disabled={!Array.isArray(organizations) || organizations.length === 0}
+                onClick={() => window.location.href = '/organizations'}
+              >
                 <Users className="mr-2" size={16} />
                 View All ({Array.isArray(organizations) ? organizations.length : 0})
               </Button>

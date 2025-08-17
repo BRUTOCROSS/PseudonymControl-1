@@ -7,6 +7,8 @@ import { AuthProvider } from "./lib/auth";
 import { useAuth } from "./hooks/useAuth";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
+import UserDashboard from "./pages/UserDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import Organizations from "./pages/Organizations";
 import OrganizationSetup from "./pages/OrganizationSetup";
 import Complaints from "./pages/Complaints";
@@ -35,8 +37,8 @@ function Router() {
         </>
       ) : (
         <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/dashboard" component={Dashboard} />
+          <Route path="/" component={user?.isAdmin ? AdminDashboard : UserDashboard} />
+          <Route path="/dashboard" component={user?.isAdmin ? AdminDashboard : UserDashboard} />
           <Route path="/organizations" component={Organizations} />
           <Route path="/complaints" component={Complaints} />
           <Route path="/settings" component={Settings} />
