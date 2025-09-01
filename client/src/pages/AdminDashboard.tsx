@@ -266,7 +266,7 @@ export default function AdminDashboard() {
                   {stats?.byStatus?.find((s: any) => s.status === 'escalated')?.count || 0}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {groupedComplaints.escalationGroups || 0} groups need escalation
+                  {groupedComplaints?.groups?.filter((g: any) => g.shouldEscalate)?.length || 0} groups need escalation
                 </p>
               </CardContent>
             </Card>
@@ -281,7 +281,7 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {groupedComplaints.groups && groupedComplaints.groups.length > 0 ? (
+              {groupedComplaints?.groups && groupedComplaints.groups.length > 0 ? (
                 <div className="space-y-6">
                   {groupedComplaints.groups.map((group: any, index: number) => (
                     <div key={group.similarityGroup} className={`border rounded-lg p-5 ${
@@ -325,7 +325,7 @@ export default function AdminDashboard() {
                           )}
                           {group.exceedsThreshold && !group.shouldEscalate && (
                             <Badge variant="outline" className="border-amber-500 text-amber-700">
-                              Above Threshold ({groupedComplaints.threshold}%)
+                              Above Threshold ({currentOrg?.thresholdPercentage || 0}%)
                             </Badge>
                           )}
                           {group.aiSummary?.urgencyLevel && (
