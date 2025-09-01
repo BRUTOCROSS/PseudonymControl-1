@@ -84,7 +84,6 @@ export default function Complaints() {
                     <SelectValue placeholder="All Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Status</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="resolved">Resolved</SelectItem>
                     <SelectItem value="escalated">Escalated</SelectItem>
@@ -96,7 +95,6 @@ export default function Complaints() {
                     <SelectValue placeholder="All Categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
                     <SelectItem value="hr">HR</SelectItem>
                     <SelectItem value="infrastructure">Infrastructure</SelectItem>
                     <SelectItem value="management">Management</SelectItem>
