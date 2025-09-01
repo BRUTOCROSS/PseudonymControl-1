@@ -311,6 +311,11 @@ export default function AdminDashboard() {
                             <h3 className="font-semibold text-neutral-800 capitalize">
                               {group.similarityGroup.replace(/-/g, ' ')}
                             </h3>
+                            {group.aiSummary ? (
+                              <p className="text-sm text-neutral-700 font-medium mb-1">
+                                📋 {group.aiSummary.summary}
+                              </p>
+                            ) : null}
                             <p className="text-sm text-neutral-500">
                               {group.count} complaints • {group.percentage}% of total
                             </p>
@@ -342,41 +347,31 @@ export default function AdminDashboard() {
                       {/* Show AI Summary for escalated groups, individual complaints for others */}
                       {group.shouldEscalate && group.aiSummary ? (
                         <div className="space-y-4">
-                          {/* AI Summary Section */}
+                          {/* AI Summary Section - Concise Executive View */}
                           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                            <h4 className="font-semibold text-blue-900 flex items-center mb-3">
-                              <Brain size={16} className="mr-2" />
-                              AI Analysis Summary
-                            </h4>
-
-                            <div className="space-y-3">
-                              <div>
-                                <h5 className="font-medium text-blue-800 mb-1">Executive Summary:</h5>
-                                <p className="text-blue-700 text-sm leading-relaxed">
-                                  {group.aiSummary.summary}
-                                </p>
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-blue-900 flex items-center mb-2">
+                                  <Brain size={16} className="mr-2" />
+                                  AI Executive Summary
+                                </h4>
+                                <div className="bg-white/60 rounded p-3 mb-3">
+                                  <p className="text-blue-800 font-medium text-base leading-relaxed">
+                                    💡 {group.aiSummary.summary}
+                                  </p>
+                                </div>
+                                <div className="text-sm text-blue-600">
+                                  <strong>{group.aiSummary.affectedCount}</strong> employees affected • 
+                                  Key issues: {group.aiSummary.keyIssues.slice(0, 2).join(', ')}
+                                  {group.aiSummary.keyIssues.length > 2 && ` +${group.aiSummary.keyIssues.length - 2} more`}
+                                </div>
                               </div>
-
-                              <div>
-                                <h5 className="font-medium text-blue-800 mb-1">Key Issues Identified:</h5>
-                                <ul className="list-disc list-inside text-blue-700 text-sm space-y-1">
-                                  {group.aiSummary.keyIssues.map((issue: string, idx: number) => (
-                                    <li key={idx}>{issue}</li>
-                                  ))}
-                                </ul>
-                              </div>
-
-                              <div className="flex items-center justify-between pt-2 border-t border-blue-200">
-                                <span className="text-sm text-blue-600">
-                                  <strong>{group.aiSummary.affectedCount}</strong> employees affected
-                                </span>
-                                <Badge variant={
-                                  group.aiSummary.urgencyLevel === 'high' ? 'destructive' :
-                                  group.aiSummary.urgencyLevel === 'medium' ? 'secondary' : 'outline'
-                                }>
-                                  {group.aiSummary.urgencyLevel.toUpperCase()} PRIORITY
-                                </Badge>
-                              </div>
+                              <Badge variant={
+                                group.aiSummary.urgencyLevel === 'high' ? 'destructive' :
+                                group.aiSummary.urgencyLevel === 'medium' ? 'secondary' : 'outline'
+                              } className="ml-3">
+                                {group.aiSummary.urgencyLevel.toUpperCase()} PRIORITY
+                              </Badge>
                             </div>
                           </div>
 

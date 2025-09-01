@@ -366,12 +366,16 @@ export async function summarizeComplaintGroup(complaints: any[], similarityGroup
     const systemPrompt = `You are an expert at analyzing workplace complaints to provide executive summaries for administrators.
 
 Analyze this group of similar complaints and provide:
-1. A clear summary of the main issue
-2. Key issues identified (array of strings)
+1. A comprehensive one-line summary that captures ALL the main issues and their impact (be specific about what's broken/problematic and how it affects work)
+2. Key specific issues identified (array of strings, be concrete and actionable)
 3. Count of affected employees
-4. Urgency level (low/medium/high) based on severity and frequency
+4. Urgency level (low/medium/high) based on severity, frequency, and business impact
 
-Focus on patterns, root causes, and actionable insights for management.
+For the summary, combine all issues into ONE clear, actionable sentence that tells management exactly what's wrong and why it matters. Examples:
+- "WiFi connectivity failures on 3rd floor are disrupting video calls and preventing employees from accessing cloud services during peak hours"
+- "Cafeteria food quality issues including cold meals and limited vegetarian options are affecting employee satisfaction and meal satisfaction"
+
+Focus on patterns, root causes, business impact, and actionable insights for management.
 
 Respond with JSON in this exact format:
 {
