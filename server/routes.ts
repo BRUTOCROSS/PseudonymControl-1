@@ -567,8 +567,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/organizations/:id", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
 
       const organizationId = parseInt(req.params.id);
@@ -579,9 +579,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Threshold percentage must be between 1 and 100" });
       }
 
-      // Verify the admin has access to this organization
-      if (user.organizationId !== organizationId) {
-        return res.status(403).json({ message: "Access denied to this organization" });
+      // Check if user has admin role in this specific organization
+      const userRole = await storage.getUserRoleInOrganization(user.id, organizationId);
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
       }
 
       // Update the organization threshold
