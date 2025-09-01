@@ -20,6 +20,7 @@ export interface IStorage {
   getOrganization(id: number): Promise<Organization | undefined>;
   getOrganizationByAccessKey(accessKey: string): Promise<Organization | undefined>;
   createOrganization(organization: InsertOrganization): Promise<Organization>;
+  updateOrganization(id: number, organization: Partial<Organization>): Promise<Organization | undefined>;
   getAllOrganizations(): Promise<Organization[]>;
 
   // Complaint operations
@@ -98,6 +99,15 @@ export class DatabaseStorage implements IStorage {
 
   async createOrganization(insertOrganization: InsertOrganization): Promise<Organization> {
     const [org] = await db.insert(organizations).values(insertOrganization).returning();
+    return org;
+  }
+
+  async updateOrganization(id: number, organizationData: Partial<Organization>): Promise<Organization | undefined> {
+    const [org] = await db
+      .update(organizations)
+      .set(organizationData)
+      .where(eq(organizations.id, id))
+      .returning();
     return org;
   }
 

@@ -545,6 +545,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Organization threshold update endpoint (admin only)
+  app.patch("/api/organizations/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const organizationId = parseInt(req.params.id);
+      const { thresholdPercentage } = req.body;
+
+      // Validate threshold percentage
+      if (!thresholdPercentage || thresholdPercentage < 1 || thresholdPercentage > 100) {
+        return res.status(400).json({ message: "Threshold percentage must be between 1 and 100" });
+      }
+
+      // Verify the admin has access to this organization
+      if (user.organizationId !== organizationId) {
+        return res.status(403).json({ message: "Access denied to this organization" });
+      }
+
+      // Update the organization threshold
+      const organization = await storage.updateOrganization(organizationId, { thresholdPercentage });
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Create notification for all organization members about threshold change
+      const orgUsers = await storage.getUsersByOrganizationId(organizationId);
+      for (const orgUser of orgUsers) {
+        await storage.createNotification({
+          title: "Escalation Threshold Updated",
+          message: `The complaint escalation threshold has been updated to ${thresholdPercentage}%`,
+          userId: orgUser.id,
+          organizationId: organizationId
+        });
+      }
+
+      res.json(organization);
+    } catch (error) {
+      console.error("Update organization threshold error:", error);
+      res.status(500).json({ message: "Failed to update threshold" });
+    }
+  });
+
   // Chat endpoint with complaint submission capability
   app.post("/api/chat", async (req, res) => {
     try {

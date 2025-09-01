@@ -45,7 +45,7 @@ export class MemoryStorage implements IStorage {
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
     const index = this.users.findIndex(user => user.id === id);
     if (index === -1) return undefined;
-    
+
     this.users[index] = { ...this.users[index], ...userData };
     return this.users[index];
   }
@@ -74,6 +74,14 @@ export class MemoryStorage implements IStorage {
     };
     this.organizations.push(organization);
     return organization;
+  }
+
+  async updateOrganization(id: number, organizationData: Partial<Organization>): Promise<Organization | undefined> {
+    const index = this.organizations.findIndex(org => org.id === id);
+    if (index === -1) return undefined;
+
+    this.organizations[index] = { ...this.organizations[index], ...organizationData };
+    return this.organizations[index];
   }
 
   async getAllOrganizations(): Promise<Organization[]> {
@@ -105,7 +113,7 @@ export class MemoryStorage implements IStorage {
   async updateComplaintStatus(id: number, status: string): Promise<Complaint | undefined> {
     const complaint = this.complaints.find(c => c.id === id);
     if (!complaint) return undefined;
-    
+
     complaint.status = status as any;
     complaint.updatedAt = new Date();
     return complaint;
@@ -114,7 +122,7 @@ export class MemoryStorage implements IStorage {
   async updateComplaintCategory(id: number, category: string, similarityGroup: string): Promise<Complaint | undefined> {
     const complaint = this.complaints.find(c => c.id === id);
     if (!complaint) return undefined;
-    
+
     complaint.category = category as any;
     complaint.similarityGroup = similarityGroup;
     complaint.updatedAt = new Date();
@@ -200,7 +208,7 @@ export class MemoryStorage implements IStorage {
   async markNotificationAsRead(id: number): Promise<Notification | undefined> {
     const notification = this.notifications.find(n => n.id === id);
     if (!notification) return undefined;
-    
+
     notification.isRead = true;
     return notification;
   }
