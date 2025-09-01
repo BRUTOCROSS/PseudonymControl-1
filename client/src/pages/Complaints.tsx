@@ -48,7 +48,7 @@ export default function Complaints() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Sidebar />
-      
+
       <div className="lg:ml-64">
         <main className="p-6">
           <div className="flex items-center justify-between mb-8">
@@ -60,7 +60,7 @@ export default function Complaints() {
                 {user?.isAdmin ? 'Manage all organization complaints' : 'Track your submitted complaints and their resolution status.'}
               </p>
             </div>
-            
+
             <Button 
               onClick={() => setShowComplaintForm(true)}
               disabled={!user?.organizationId}
@@ -78,7 +78,7 @@ export default function Complaints() {
                   <Filter size={16} />
                   <span className="text-sm font-medium">Filters:</span>
                 </div>
-                
+
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-32">
                     <SelectValue placeholder="All Status" />
@@ -90,7 +90,7 @@ export default function Complaints() {
                     <SelectItem value="escalated">Escalated</SelectItem>
                   </SelectContent>
                 </Select>
-                
+
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="All Categories" />

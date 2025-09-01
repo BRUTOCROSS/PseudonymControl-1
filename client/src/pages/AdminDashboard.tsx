@@ -11,13 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  BarChart3, 
-  MessageSquare, 
-  Settings, 
-  AlertTriangle, 
-  CheckCircle, 
-  Clock, 
+import {
+  BarChart3,
+  MessageSquare,
+  Settings,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
   Building,
   Users
 } from "lucide-react";
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
     queryKey: ["/api/organizations"],
   });
 
-  const currentOrg = Array.isArray(organizations) && user?.organizationId 
+  const currentOrg = Array.isArray(organizations) && user?.organizationId
     ? organizations.find((org: any) => org.id === user.organizationId)
     : null;
 
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
   return (
     <div className="flex min-h-screen bg-neutral-50">
       <Sidebar userRole="admin" />
-      
+
       <div className="flex-1 flex flex-col">
         <header className="bg-white shadow-sm border-b border-neutral-200 h-16 flex items-center px-6">
           <div className="flex items-center space-x-4">
@@ -261,9 +261,9 @@ export default function AdminDashboard() {
                 <div className="space-y-6">
                   {groupedComplaints.groups.map((group: any, index: number) => (
                     <div key={group.similarityGroup} className={`border rounded-lg p-5 ${
-                      group.shouldEscalate 
-                        ? 'border-red-200 bg-red-50' 
-                        : group.exceedsThreshold 
+                      group.shouldEscalate
+                        ? 'border-red-200 bg-red-50'
+                        : group.exceedsThreshold
                           ? 'border-amber-200 bg-amber-50'
                           : 'border-neutral-200'
                     }`}>
@@ -271,8 +271,8 @@ export default function AdminDashboard() {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <div className={`p-2 rounded-full ${
-                            group.shouldEscalate 
-                              ? 'bg-red-100 text-red-600' 
+                            group.shouldEscalate
+                              ? 'bg-red-100 text-red-600'
                               : group.exceedsThreshold
                                 ? 'bg-amber-100 text-amber-600'
                                 : 'bg-blue-100 text-blue-600'
@@ -292,7 +292,7 @@ export default function AdminDashboard() {
                             </p>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           {group.shouldEscalate && (
                             <Badge variant="destructive" className="animate-pulse">
@@ -324,9 +324,9 @@ export default function AdminDashboard() {
                             </div>
                             <span className="font-medium text-neutral-800">Analysis Summary</span>
                           </div>
-                          
+
                           <p className="text-neutral-700 mb-3">{group.aiSummary.summary}</p>
-                          
+
                           {group.aiSummary.keyIssues && group.aiSummary.keyIssues.length > 0 && (
                             <div>
                               <p className="text-sm font-medium text-neutral-600 mb-2">Key Issues Identified:</p>
@@ -356,7 +356,7 @@ export default function AdminDashboard() {
                             Latest: {new Date(group.latestComplaint.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           {group.shouldEscalate && (
                             <Button
@@ -409,7 +409,7 @@ export default function AdminDashboard() {
               <TabsTrigger value="groups">AI Grouped Analysis</TabsTrigger>
               <TabsTrigger value="individual">Individual Complaints</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="individual">
               <Card>
                 <CardHeader>
@@ -446,7 +446,7 @@ export default function AdminDashboard() {
                                 )}
                               </div>
                             </div>
-                            
+
                             <p className="text-neutral-700 mb-3 line-clamp-2">
                               {complaint.content}
                             </p>
@@ -464,7 +464,7 @@ export default function AdminDashboard() {
                                   </span>
                                 )}
                               </div>
-                              
+
                               <div className="flex items-center space-x-2">
                                 {complaint.status === 'pending' && (
                                   <>
