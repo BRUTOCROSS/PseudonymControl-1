@@ -56,6 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       queryClient.setQueryData(["/api/auth/user"], null);
       queryClient.clear();
+      // Force navigation to landing page after logout
+      window.location.href = "/";
     },
   });
 
