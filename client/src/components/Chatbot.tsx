@@ -116,7 +116,7 @@ export default function Chatbot({ isOpen, onToggle }: ChatbotProps) {
 
   return (
     <Card className="fixed bottom-6 right-6 w-96 h-[500px] shadow-2xl z-50 flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
         <CardTitle className="flex items-center space-x-2">
           <Bot className="h-5 w-5 text-primary" />
           <span>Complaint Assistant</span>
@@ -131,62 +131,64 @@ export default function Chatbot({ isOpen, onToggle }: ChatbotProps) {
         </Button>
       </CardHeader>
       
-      <CardContent className="flex-1 flex flex-col p-0">
+      <CardContent className="flex-1 flex flex-col p-0 min-h-0">
         {/* Messages */}
-        <ScrollArea className="flex-1 h-[350px]">
-          <div className="p-4 space-y-4">
-            {messages.map((message, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "flex space-x-2",
-                  message.role === 'user' ? "justify-end" : "justify-start"
-                )}
-              >
-                {message.role === 'assistant' && (
-                  <Bot className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
-                )}
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-4">
+              {messages.map((message, index) => (
                 <div
+                  key={index}
                   className={cn(
-                    "max-w-[280px] rounded-lg px-3 py-2 text-sm break-words",
-                    message.role === 'user' 
-                      ? "bg-primary text-primary-foreground ml-8" 
-                      : message.content.includes("Complaint Details:") || message.content.includes("Thank you! Your complaint has been")
-                        ? "bg-green-50 border border-green-200 text-green-800"
-                        : "bg-muted"
+                    "flex space-x-2",
+                    message.role === 'user' ? "justify-end" : "justify-start"
                   )}
                 >
-                  {message.content.includes("Complaint Details:") && (
-                    <div className="flex items-center space-x-2 mb-2">
-                      <CheckCircle size={16} className="text-green-600" />
-                      <span className="font-medium text-green-700">Complaint Submitted</span>
-                    </div>
+                  {message.role === 'assistant' && (
+                    <Bot className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
                   )}
-                  {message.content}
+                  <div
+                    className={cn(
+                      "max-w-[280px] rounded-lg px-3 py-2 text-sm break-words",
+                      message.role === 'user' 
+                        ? "bg-primary text-primary-foreground ml-8" 
+                        : message.content.includes("Complaint Details:") || message.content.includes("Thank you! Your complaint has been")
+                          ? "bg-green-50 border border-green-200 text-green-800"
+                          : "bg-muted"
+                    )}
+                  >
+                    {message.content.includes("Complaint Details:") && (
+                      <div className="flex items-center space-x-2 mb-2">
+                        <CheckCircle size={16} className="text-green-600" />
+                        <span className="font-medium text-green-700">Complaint Submitted</span>
+                      </div>
+                    )}
+                    {message.content}
+                  </div>
+                  {message.role === 'user' && (
+                    <User className="h-6 w-6 text-muted-foreground mt-1 flex-shrink-0" />
+                  )}
                 </div>
-                {message.role === 'user' && (
-                  <User className="h-6 w-6 text-muted-foreground mt-1 flex-shrink-0" />
-                )}
-              </div>
-            ))}
-            {chatMutation.isPending && (
-              <div className="flex space-x-2 justify-start">
-                <Bot className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
-                <div className="bg-muted rounded-lg px-3 py-2 text-sm">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              ))}
+              {chatMutation.isPending && (
+                <div className="flex space-x-2 justify-start">
+                  <Bot className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                  <div className="bg-muted rounded-lg px-3 py-2 text-sm">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+        </div>
 
         {/* Input */}
-        <div className="border-t p-4">
+        <div className="border-t p-4 flex-shrink-0">
           <div className="flex space-x-2">
             <Input
               value={input}
