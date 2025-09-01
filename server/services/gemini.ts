@@ -122,6 +122,57 @@ const intentResponses: Record<Intent, string[]> = {
   ]
 };
 
+// Function to detect if a message is a complaint submission
+export function isComplaintSubmission(message: string): boolean {
+  const lowerMessage = message.toLowerCase();
+  
+  // Check message length - complaints are usually detailed
+  if (message.length < 30) {
+    return false;
+  }
+
+  // Complaint indicators
+  const complaintKeywords = [
+    'complaint', 'complain', 'issue', 'problem', 'concern', 'report',
+    'harassment', 'discrimination', 'bullying', 'unfair', 'unsafe',
+    'violated', 'violation', 'inappropriate', 'unprofessional',
+    'hostile environment', 'workplace issue', 'submit a complaint',
+    'file a complaint', 'lodge a complaint', 'raise a concern'
+  ];
+
+  // Direct complaint submission phrases
+  const directSubmissionPhrases = [
+    'i want to file', 'i want to submit', 'i want to report',
+    'i need to report', 'i need to complain', 'i have a complaint',
+    'i want to lodge', 'submit complaint', 'file complaint',
+    'report an issue', 'there is a problem', 'this is a complaint'
+  ];
+
+  // Check for direct submission phrases
+  const hasDirectPhrase = directSubmissionPhrases.some(phrase => 
+    lowerMessage.includes(phrase)
+  );
+
+  // Check for complaint keywords
+  const hasComplaintKeywords = complaintKeywords.some(keyword => 
+    lowerMessage.includes(keyword)
+  );
+
+  // Check for detailed description patterns (sentences with complaint context)
+  const hasDetailedDescription = (
+    (lowerMessage.includes('my manager') || lowerMessage.includes('supervisor') || 
+     lowerMessage.includes('colleague') || lowerMessage.includes('coworker')) &&
+    (lowerMessage.includes('said') || lowerMessage.includes('did') || 
+     lowerMessage.includes('told') || lowerMessage.includes('made'))
+  ) || (
+    lowerMessage.includes('department') && 
+    (lowerMessage.includes('not') || lowerMessage.includes('doesn\'t') || 
+     lowerMessage.includes('refuses') || lowerMessage.includes('ignores'))
+  );
+
+  return hasDirectPhrase || (hasComplaintKeywords && hasDetailedDescription);
+}
+
 export async function categorizeComplaint(text: string): Promise<{
   category: string;
   confidence: number;

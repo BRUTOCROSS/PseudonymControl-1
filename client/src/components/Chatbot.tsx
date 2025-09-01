@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bot, User, Send, MessageCircle, X } from "lucide-react";
+import { Bot, User, Send, MessageCircle, X, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -23,11 +24,13 @@ export default function Chatbot({ isOpen, onToggle }: ChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hello! I\'m here to help with your workplace complaints. You can ask me about the submission process, check on complaint status, or get guidance on workplace issues.',
+      content: 'Hello! I\'m here to help with your workplace complaints. You can submit complaints directly here, check on complaint status, or get guidance on workplace issues. Just describe your concern in detail and I\'ll help you lodge it.',
       timestamp: new Date()
     }
   ]);
   const [input, setInput] = useState("");
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -46,6 +49,17 @@ export default function Chatbot({ isOpen, onToggle }: ChatbotProps) {
         content: data.response,
         timestamp: new Date()
       }]);
+
+      // If a complaint was submitted, refresh the complaints data and show success toast
+      if (data.complaintSubmitted) {
+        queryClient.invalidateQueries({ queryKey: ['/api/complaints'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/complaints/stats'] });
+        
+        toast({
+          title: "Complaint Successfully Lodged!",
+          description: `Your complaint (#${data.complaintId}) has been submitted anonymously and is under review.`,
+        });
+      }
     },
     onError: () => {
       setMessages(prev => [...prev, {
@@ -126,9 +140,17 @@ export default function Chatbot({ isOpen, onToggle }: ChatbotProps) {
                   "max-w-[280px] rounded-lg px-3 py-2 text-sm",
                   message.role === 'user' 
                     ? "bg-primary text-primary-foreground ml-8" 
-                    : "bg-muted"
+                    : message.content.includes("Complaint Details:") || message.content.includes("Thank you! Your complaint has been")
+                      ? "bg-green-50 border border-green-200 text-green-800"
+                      : "bg-muted"
                 )}
               >
+                {message.content.includes("Complaint Details:") && (
+                  <div className="flex items-center space-x-2 mb-2">
+                    <CheckCircle size={16} className="text-green-600" />
+                    <span className="font-medium text-green-700">Complaint Submitted</span>
+                  </div>
+                )}
                 {message.content}
               </div>
               {message.role === 'user' && (

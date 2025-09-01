@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat endpoint
+  // Chat endpoint with complaint submission capability
   app.post("/api/chat", async (req, res) => {
     try {
       const { message, chatHistory = [] } = req.body;
@@ -435,9 +435,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Message is required" });
       }
 
-      // Import getChatResponse from gemini service
-      const { getChatResponse } = await import("./services/gemini");
+      // Check if user is authenticated for complaint submission
+      const isAuthenticated = !!req.session.userId;
+      let user = null;
       
+      if (isAuthenticated) {
+        user = await storage.getUser(req.session.userId!);
+      }
+
+      // Import functions from gemini service
+      const { getChatResponse, isComplaintSubmission, categorizeComplaint } = await import("./services/gemini");
+      
+      // Check if this message is a complaint submission
+      if (isAuthenticated && user && user.organizationId && isComplaintSubmission(message)) {
+        // This is a complaint - create it in the database
+        try {
+          let finalCategory = 'other';
+          let similarityGroup = 'general-concerns';
+          
+          try {
+            const aiResult = await categorizeComplaint(message);
+            finalCategory = aiResult.category;
+            similarityGroup = aiResult.similarityGroup;
+          } catch (error) {
+            console.error("AI categorization failed:", error);
+          }
+
+          const complaintData = {
+            content: message,
+            category: finalCategory,
+            similarityGroup,
+            userId: user.id,
+            organizationId: user.organizationId,
+            status: 'pending' as const,
+            escalated: false
+          };
+
+          const complaint = await storage.createComplaint(complaintData);
+
+          // Create notification for admins
+          const admins = await storage.getUsersByOrganizationId(user.organizationId);
+          for (const admin of admins.filter(u => u.isAdmin)) {
+            await storage.createNotification({
+              title: "New Complaint Submitted",
+              message: `A new ${finalCategory} complaint has been submitted`,
+              userId: admin.id,
+              organizationId: user.organizationId
+            });
+          }
+
+          // Return complaint confirmation
+          const response = `Thank you! Your complaint has been successfully lodged and submitted anonymously. 
+
+**Complaint Details:**
+- **Category:** ${finalCategory}
+- **Status:** Pending review
+- **Complaint ID:** #${complaint.id}
+
+Your complaint will be reviewed by the appropriate administrators. You'll receive notifications about any status updates. You can also check the status anytime in the 'My Complaints' section of your dashboard.
+
+Is there anything else I can help you with regarding this complaint or the process?`;
+          
+          return res.json({ response, complaintSubmitted: true, complaintId: complaint.id });
+          
+        } catch (error) {
+          console.error("Failed to create complaint via chat:", error);
+          const response = "I apologize, but there was an issue submitting your complaint. Please try using the complaint form instead, or contact support if the problem persists.";
+          return res.json({ response });
+        }
+      }
+
+      // Regular chat response (not a complaint)
       const response = await getChatResponse(message, chatHistory);
       
       res.json({ response });
