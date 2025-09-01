@@ -77,7 +77,7 @@ export default function Dashboard() {
                 >
                   ← Back to Dashboard
                 </Button>
-                
+
                 <div className="flex items-center space-x-4">
                   {currentOrg && (
                     <div className="hidden sm:flex items-center space-x-4">
@@ -117,7 +117,7 @@ export default function Dashboard() {
               </div>
             </div>
           </header>
-          
+
           <main className="p-6">
             <AdminDashboard />
           </main>
@@ -129,7 +129,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Sidebar />
-      
+
       <div className="lg:ml-64">
         {/* Top Bar */}
         <header className="bg-white shadow-sm border-b border-neutral-200">
@@ -288,14 +288,16 @@ export default function Dashboard() {
                   <p className="text-sm text-neutral-600 mb-4">
                     Submit a new complaint anonymously and securely.
                   </p>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => setShowComplaintForm(true)}
-                    disabled={!user?.organizationId}
-                  >
-                    <Plus className="mr-2" size={16} />
-                    New Complaint
-                  </Button>
+                  {!user?.isAdmin && (
+                    <Button 
+                      onClick={() => setShowComplaintForm(true)}
+                      className="bg-primary text-white hover:bg-primary/90 w-full"
+                      disabled={!user?.organizationId}
+                    >
+                      <Plus className="mr-2" size={16} />
+                      New Complaint
+                    </Button>
+                  )}
                   {!user?.organizationId && (
                     <p className="text-xs text-neutral-500 mt-2">
                       Join an organization first to submit complaints

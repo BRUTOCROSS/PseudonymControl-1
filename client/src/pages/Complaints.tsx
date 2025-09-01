@@ -61,13 +61,15 @@ export default function Complaints() {
               </p>
             </div>
 
-            <Button 
-              onClick={() => setShowComplaintForm(true)}
-              disabled={!user?.organizationId}
-            >
-              <Plus className="mr-2" size={16} />
-              New Complaint
-            </Button>
+            {!user?.isAdmin && (
+              <Button 
+                onClick={() => setShowComplaintForm(true)}
+                disabled={!user?.organizationId}
+              >
+                <Plus className="mr-2" size={16} />
+                New Complaint
+              </Button>
+            )}
           </div>
 
           {/* Filters */}
@@ -150,9 +152,11 @@ export default function Complaints() {
                   <Card>
                     <CardContent className="text-center py-12">
                       <p className="text-neutral-500 mb-4">No complaints found matching your filters.</p>
-                      <Button onClick={() => setShowComplaintForm(true)}>
-                        Submit Your First Complaint
-                      </Button>
+                      {!user?.isAdmin && (
+                        <Button onClick={() => setShowComplaintForm(true)}>
+                          Submit Your First Complaint
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 )}
