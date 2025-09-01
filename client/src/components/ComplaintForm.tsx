@@ -118,13 +118,13 @@ export default function ComplaintForm({ open, onClose }: ComplaintFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby="complaint-form-description">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Shield className="text-primary" size={20} />
             <span>Submit Anonymous Complaint</span>
           </DialogTitle>
-          <p className="text-sm text-neutral-600">
+          <p id="complaint-form-description" className="text-sm text-neutral-600">
             Your identity will remain completely anonymous. All complaints are processed securely.
           </p>
         </DialogHeader>
