@@ -35,6 +35,10 @@ export default function AdminDashboard() {
     queryKey: ["/api/complaints"],
   });
 
+  const { data: groupedComplaints = { groups: [], threshold: 15, totalComplaints: 0 } } = useQuery<any>({
+    queryKey: ["/api/complaints/grouped"],
+  });
+
   const { data: stats = {} } = useQuery<any>({
     queryKey: ["/api/complaints/stats"],
   });
@@ -238,103 +242,270 @@ export default function AdminDashboard() {
                 <div className="text-2xl font-bold">
                   {stats?.byStatus?.find((s: any) => s.status === 'escalated')?.count || 0}
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {groupedComplaints.escalationGroups || 0} groups need escalation
+                </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Complaints Management */}
+          {/* AI-Summarized Complaint Groups */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <MessageSquare className="text-primary" size={20} />
-                <span>Complaints Management</span>
+                <BarChart3 className="text-primary" size={20} />
+                <span>AI Complaint Analysis</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {Array.isArray(complaints) && complaints.length > 0 ? (
-                <div className="space-y-4">
-                  {complaints.map((complaint: any) => {
-                    const StatusIcon = getStatusIcon(complaint.status);
-                    return (
-                      <div key={complaint.id} className="border border-neutral-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center space-x-3">
-                            <StatusIcon className="text-neutral-500" size={16} />
-                            <div>
-                              <h3 className="font-medium text-neutral-800">
-                                Complaint #{complaint.id}
-                              </h3>
-                              <p className="text-sm text-neutral-500">
-                                By {complaint.pseudonym} • {new Date(complaint.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant={getStatusBadgeVariant(complaint.status)}>
-                              {complaint.status}
-                            </Badge>
-                            {complaint.category && (
-                              <Badge variant="outline">{complaint.category}</Badge>
+              {groupedComplaints.groups && groupedComplaints.groups.length > 0 ? (
+                <div className="space-y-6">
+                  {groupedComplaints.groups.map((group: any, index: number) => (
+                    <div key={group.similarityGroup} className={`border rounded-lg p-5 ${
+                      group.shouldEscalate 
+                        ? 'border-red-200 bg-red-50' 
+                        : group.exceedsThreshold 
+                          ? 'border-amber-200 bg-amber-50'
+                          : 'border-neutral-200'
+                    }`}>
+                      {/* Group Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className={`p-2 rounded-full ${
+                            group.shouldEscalate 
+                              ? 'bg-red-100 text-red-600' 
+                              : group.exceedsThreshold
+                                ? 'bg-amber-100 text-amber-600'
+                                : 'bg-blue-100 text-blue-600'
+                          }`}>
+                            {group.shouldEscalate ? (
+                              <AlertTriangle size={16} />
+                            ) : (
+                              <Users size={16} />
                             )}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-neutral-800 capitalize">
+                              {group.similarityGroup.replace(/-/g, ' ')}
+                            </h3>
+                            <p className="text-sm text-neutral-500">
+                              {group.count} complaints • {group.percentage}% of total
+                            </p>
                           </div>
                         </div>
                         
-                        <p className="text-neutral-700 mb-3 line-clamp-2">
-                          {complaint.content}
-                        </p>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            {complaint.similarityGroup && (
-                              <Badge variant="secondary" className="text-xs">
-                                Group {complaint.similarityGroup}
-                              </Badge>
-                            )}
-                            {complaint.confidence && (
-                              <span className="text-xs text-neutral-500">
-                                Confidence: {Math.round(complaint.confidence * 100)}%
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center space-x-2">
-                            {complaint.status === 'pending' && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleUpdateComplaint(complaint.id, 'resolved')}
-                                  disabled={updateComplaintMutation.isPending}
-                                >
-                                  Mark Resolved
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => handleUpdateComplaint(complaint.id, 'escalated')}
-                                  disabled={updateComplaintMutation.isPending}
-                                >
-                                  Escalate
-                                </Button>
-                              </>
-                            )}
-                          </div>
+                        <div className="flex items-center space-x-2">
+                          {group.shouldEscalate && (
+                            <Badge variant="destructive" className="animate-pulse">
+                              REQUIRES ESCALATION
+                            </Badge>
+                          )}
+                          {group.exceedsThreshold && !group.shouldEscalate && (
+                            <Badge variant="outline" className="border-amber-500 text-amber-700">
+                              Above Threshold ({groupedComplaints.threshold}%)
+                            </Badge>
+                          )}
+                          {group.aiSummary?.urgencyLevel && (
+                            <Badge variant={
+                              group.aiSummary.urgencyLevel === 'high' ? 'destructive' :
+                              group.aiSummary.urgencyLevel === 'medium' ? 'secondary' : 'outline'
+                            }>
+                              {group.aiSummary.urgencyLevel.toUpperCase()} PRIORITY
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
+
+                      {/* AI Summary */}
+                      {group.aiSummary && (
+                        <div className="bg-white rounded-lg p-4 mb-4 border">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded text-white text-xs flex items-center justify-center">
+                              AI
+                            </div>
+                            <span className="font-medium text-neutral-800">Analysis Summary</span>
+                          </div>
+                          
+                          <p className="text-neutral-700 mb-3">{group.aiSummary.summary}</p>
+                          
+                          {group.aiSummary.keyIssues && group.aiSummary.keyIssues.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-neutral-600 mb-2">Key Issues Identified:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {group.aiSummary.keyIssues.map((issue: string, i: number) => (
+                                  <Badge key={i} variant="outline" className="text-xs">
+                                    {issue}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Group Actions */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedComplaint(group)}
+                          >
+                            View All {group.count} Complaints
+                          </Button>
+                          <span className="text-xs text-neutral-500">
+                            Latest: {new Date(group.latestComplaint.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          {group.shouldEscalate && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                // Escalate all pending complaints in this group
+                                group.complaints
+                                  .filter((c: any) => c.status === 'pending')
+                                  .forEach((c: any) => handleUpdateComplaint(c.id, 'escalated'));
+                              }}
+                              disabled={updateComplaintMutation.isPending}
+                            >
+                              Escalate Group
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Mark all pending complaints in this group as resolved
+                              group.complaints
+                                .filter((c: any) => c.status === 'pending')
+                                .forEach((c: any) => handleUpdateComplaint(c.id, 'resolved'));
+                            }}
+                            disabled={updateComplaintMutation.isPending}
+                          >
+                            Resolve Group
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
                   <MessageSquare className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
-                  <h3 className="text-lg font-medium text-neutral-900 mb-2">No Complaints Yet</h3>
+                  <h3 className="text-lg font-medium text-neutral-900 mb-2">No Complaint Groups</h3>
                   <p className="text-neutral-600">
-                    When employees submit complaints, they will appear here for your review.
+                    When employees submit complaints, AI will group and summarize them here for easier management.
                   </p>
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Individual Complaints (Secondary Tab) */}
+          <Tabs defaultValue="groups" className="mt-6">
+            <TabsList>
+              <TabsTrigger value="groups">AI Grouped Analysis</TabsTrigger>
+              <TabsTrigger value="individual">Individual Complaints</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="individual">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <MessageSquare className="text-primary" size={20} />
+                    <span>Individual Complaints</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {Array.isArray(complaints) && complaints.length > 0 ? (
+                    <div className="space-y-4">
+                      {complaints.map((complaint: any) => {
+                        const StatusIcon = getStatusIcon(complaint.status);
+                        return (
+                          <div key={complaint.id} className="border border-neutral-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <StatusIcon className="text-neutral-500" size={16} />
+                                <div>
+                                  <h3 className="font-medium text-neutral-800">
+                                    Complaint #{complaint.id}
+                                  </h3>
+                                  <p className="text-sm text-neutral-500">
+                                    By {complaint.pseudonym} • {new Date(complaint.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Badge variant={getStatusBadgeVariant(complaint.status)}>
+                                  {complaint.status}
+                                </Badge>
+                                {complaint.category && (
+                                  <Badge variant="outline">{complaint.category}</Badge>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <p className="text-neutral-700 mb-3 line-clamp-2">
+                              {complaint.content}
+                            </p>
+
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                {complaint.similarityGroup && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Group {complaint.similarityGroup}
+                                  </Badge>
+                                )}
+                                {complaint.confidence && (
+                                  <span className="text-xs text-neutral-500">
+                                    Confidence: {Math.round(complaint.confidence * 100)}%
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center space-x-2">
+                                {complaint.status === 'pending' && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleUpdateComplaint(complaint.id, 'resolved')}
+                                      disabled={updateComplaintMutation.isPending}
+                                    >
+                                      Mark Resolved
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleUpdateComplaint(complaint.id, 'escalated')}
+                                      disabled={updateComplaintMutation.isPending}
+                                    >
+                                      Escalate
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <MessageSquare className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
+                      <h3 className="text-lg font-medium text-neutral-900 mb-2">No Complaints Yet</h3>
+                      <p className="text-neutral-600">
+                        When employees submit complaints, they will appear here for your review.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
 

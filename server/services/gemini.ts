@@ -297,6 +297,78 @@ function getResponseForIntent(intent: Intent): string {
   return responses[Math.floor(Math.random() * responses.length)];
 }
 
+export async function summarizeComplaintGroup(complaints: any[], similarityGroup: string): Promise<{
+  summary: string;
+  keyIssues: string[];
+  affectedCount: number;
+  urgencyLevel: 'low' | 'medium' | 'high';
+}> {
+  try {
+    const systemPrompt = `You are an expert at analyzing workplace complaints to provide executive summaries for administrators.
+
+Analyze this group of similar complaints and provide:
+1. A clear summary of the main issue
+2. Key issues identified (array of strings)
+3. Count of affected employees
+4. Urgency level (low/medium/high) based on severity and frequency
+
+Focus on patterns, root causes, and actionable insights for management.
+
+Respond with JSON in this exact format:
+{
+  "summary": "string",
+  "keyIssues": ["string"],
+  "affectedCount": number,
+  "urgencyLevel": "low|medium|high"
+}`;
+
+    const complaintsText = complaints.map((c, i) => 
+      `Complaint ${i + 1}: ${c.content}`
+    ).join('\n\n');
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-pro",
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            summary: { type: "string" },
+            keyIssues: { 
+              type: "array",
+              items: { type: "string" }
+            },
+            affectedCount: { type: "number" },
+            urgencyLevel: { 
+              type: "string",
+              enum: ["low", "medium", "high"]
+            }
+          },
+          required: ["summary", "keyIssues", "affectedCount", "urgencyLevel"]
+        }
+      },
+      contents: `Similarity Group: ${similarityGroup}\n\nComplaints:\n${complaintsText}`,
+    });
+
+    const result = JSON.parse(response.text || '{}');
+    return {
+      summary: result.summary || 'Multiple complaints received on this topic',
+      keyIssues: result.keyIssues || ['Workplace concern identified'],
+      affectedCount: result.affectedCount || complaints.length,
+      urgencyLevel: result.urgencyLevel || 'medium'
+    };
+  } catch (error) {
+    console.error('Error summarizing complaint group:', error);
+    return {
+      summary: `${complaints.length} similar complaints regarding ${similarityGroup}`,
+      keyIssues: ['Multiple employees affected', 'Requires attention'],
+      affectedCount: complaints.length,
+      urgencyLevel: 'medium'
+    };
+  }
+}
+
 export async function getChatResponse(userMessage: string, chatHistory: Array<{role: string, content: string}>): Promise<string> {
   try {
     // Detect intent from user message

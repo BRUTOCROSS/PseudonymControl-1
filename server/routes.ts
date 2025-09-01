@@ -304,12 +304,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const complaint = await storage.createComplaint(complaintData);
 
+      // Check if this group should be escalated based on threshold
+      const organization = await storage.getOrganization(user.organizationId);
+      const threshold = organization?.thresholdPercentage || 15;
+      
+      // Get all complaints for this organization to calculate percentage
+      const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
+      const similarComplaints = orgComplaints.filter(c => c.similarityGroup === similarityGroup);
+      const groupPercentage = orgComplaints.length > 0 ? (similarComplaints.length / orgComplaints.length) * 100 : 0;
+      
+      // Auto-escalate if threshold is reached
+      if (groupPercentage >= threshold) {
+        // Escalate all pending complaints in this similarity group
+        for (const similarComplaint of similarComplaints.filter(c => c.status === 'pending')) {
+          await storage.updateComplaintStatus(similarComplaint.id, 'escalated');
+        }
+      }
+
       // Create notification for admins
       const admins = await storage.getUsersByOrganizationId(user.organizationId);
+      const notificationTitle = groupPercentage >= threshold 
+        ? "URGENT: Complaint Group Auto-Escalated" 
+        : "New Complaint Submitted";
+      const notificationMessage = groupPercentage >= threshold
+        ? `${similarComplaints.length} complaints about "${similarityGroup}" have been auto-escalated (${groupPercentage.toFixed(1)}% of total complaints)`
+        : `A new ${finalCategory} complaint has been submitted`;
+
       for (const admin of admins.filter(u => u.isAdmin)) {
         await storage.createNotification({
-          title: "New Complaint Submitted",
-          message: `A new ${finalCategory} complaint has been submitted`,
+          title: notificationTitle,
+          message: notificationMessage,
           userId: admin.id,
           organizationId: user.organizationId
         });
@@ -387,6 +411,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get complaint stats error:", error);
       res.status(500).json({ message: "Failed to fetch complaint statistics" });
+    }
+  });
+
+  // Grouped complaints endpoint for admin dashboard
+  app.get("/api/complaints/grouped", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user?.isAdmin || !user.organizationId) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      // Get all complaints for the organization
+      const complaints = await storage.getComplaintsByOrganizationId(user.organizationId);
+      
+      // Group complaints by similarityGroup
+      const groupedComplaints = complaints.reduce((groups: any, complaint: any) => {
+        const group = complaint.similarityGroup || 'general-concerns';
+        if (!groups[group]) {
+          groups[group] = [];
+        }
+        groups[group].push(complaint);
+        return groups;
+      }, {});
+
+      // Get organization threshold
+      const organization = await storage.getOrganization(user.organizationId);
+      const threshold = organization?.thresholdPercentage || 15;
+      const totalComplaints = complaints.length;
+
+      // Create summaries for each group and check thresholds
+      const { summarizeComplaintGroup } = await import("./services/gemini");
+      const groupSummaries = [];
+
+      for (const [similarityGroup, groupComplaints] of Object.entries(groupedComplaints)) {
+        const complaintsArray = groupComplaints as any[];
+        const groupPercentage = totalComplaints > 0 ? (complaintsArray.length / totalComplaints) * 100 : 0;
+        const shouldEscalate = groupPercentage >= threshold && complaintsArray.some(c => c.status === 'pending');
+
+        // Generate AI summary for this group
+        let aiSummary = null;
+        try {
+          aiSummary = await summarizeComplaintGroup(complaintsArray, similarityGroup);
+        } catch (error) {
+          console.error(`Failed to summarize group ${similarityGroup}:`, error);
+        }
+
+        groupSummaries.push({
+          similarityGroup,
+          complaints: complaintsArray,
+          count: complaintsArray.length,
+          percentage: Math.round(groupPercentage * 10) / 10,
+          shouldEscalate,
+          exceedsThreshold: groupPercentage >= threshold,
+          aiSummary,
+          latestComplaint: complaintsArray.sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0]
+        });
+      }
+
+      // Sort groups by urgency and percentage
+      groupSummaries.sort((a, b) => {
+        if (a.shouldEscalate !== b.shouldEscalate) {
+          return a.shouldEscalate ? -1 : 1;
+        }
+        return b.percentage - a.percentage;
+      });
+
+      res.json({
+        groups: groupSummaries,
+        threshold,
+        totalComplaints,
+        escalationGroups: groupSummaries.filter(g => g.shouldEscalate).length
+      });
+    } catch (error) {
+      console.error("Get grouped complaints error:", error);
+      res.status(500).json({ message: "Failed to fetch grouped complaints" });
     }
   });
 
