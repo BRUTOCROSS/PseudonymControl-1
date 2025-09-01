@@ -42,12 +42,24 @@ export default function AdminDashboard() {
     queryKey: ["/api/complaints"],
   });
 
-  const { data: groupedComplaints = { groups: [], threshold: 15, totalComplaints: 0 } } = useQuery<any>({
+  const { data: groupedComplaints, isLoading: isLoadingGrouped } = useQuery<any>({
     queryKey: ["/api/complaints/grouped"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/complaints/grouped");
+      return response.json();
+    },
+    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchIntervalInBackground: true,
   });
 
   const { data: stats = {} } = useQuery<any>({
     queryKey: ["/api/complaints/stats"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/complaints/stats");
+      return response.json();
+    },
+    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchIntervalInBackground: true,
   });
 
   const { data: organizations = [] } = useQuery<any[]>({
@@ -378,8 +390,8 @@ export default function AdminDashboard() {
                                 <Eye size={16} className="mr-2" />
                                 View All Details
                               </Button>
-                              <Button 
-                                variant="default" 
+                              <Button
+                                variant="default"
                                 size="sm"
                                 onClick={() => {
                                   // Mark all as resolved

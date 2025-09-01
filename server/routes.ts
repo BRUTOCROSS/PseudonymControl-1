@@ -54,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { username, password, organizationAccessKey } = req.body;
-      
+
       // Validate input
       if (!username || !password) {
         return res.status(400).json({ message: "Username and password are required" });
@@ -79,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
-      
+
       // Generate pseudonym and access key
       const pseudonym = generatePseudonym();
       const accessKey = nanoid(16);
@@ -184,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Creating organization with user ID:", req.session.userId);
       console.log("Request body:", req.body);
-      
+
       const user = await storage.getUser(req.session.userId!);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -192,17 +192,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const requestData = req.body;
       requestData.accessKey = nanoid(12);
-      
+
       // Validate the data
       const data = insertOrganizationSchema.parse(requestData);
       console.log("Parsed organization data:", data);
-      
+
       const organization = await storage.createOrganization(data);
       console.log("Created organization:", organization);
-      
+
       // Make the creator an admin in the user-organization relationship
       await storage.addUserToOrganization(req.session.userId!, organization.id, 'admin');
-      
+
       // Update user's current organization
       await storage.updateUser(req.session.userId!, { 
         organizationId: organization.id,
@@ -232,7 +232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/organizations/join", requireAuth, async (req, res) => {
     try {
       const { accessKey } = req.body;
-      
+
       const organization = await storage.getOrganizationByAccessKey(accessKey);
       if (!organization) {
         return res.status(404).json({ message: "Organization not found" });
@@ -263,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/organizations/switch", requireAuth, async (req, res) => {
     try {
       const { organizationId } = req.body;
-      
+
       // Verify user has access to this organization
       const organization = await storage.getOrganization(organizationId);
       if (!organization) {
@@ -316,11 +316,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { content, category } = req.body;
-      
+
       // Use Gemini AI for categorization if no category provided
       let finalCategory = category;
       let similarityGroup = '';
-      
+
       if (!category) {
         try {
           const aiResult = await categorizeComplaint(content);
@@ -349,18 +349,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this group should be escalated based on threshold
       const organization = await storage.getOrganization(user.organizationId);
       const threshold = organization?.thresholdPercentage || 15;
-      
+
       // Get all complaints for this organization to calculate percentage
       const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
-      
+
       // Filter out complaints from admin users for threshold calculation
       const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
       const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
       const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
-      
+
       const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
       const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
-      
+
       // Auto-escalate if threshold is reached
       if (groupPercentage >= threshold) {
         // Escalate all pending complaints in this similarity group
@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { status } = req.body;
       const complaintId = parseInt(req.params.id);
-      
+
       const complaint = await storage.updateComplaintStatus(complaintId, status);
       if (!complaint) {
         return res.status(404).json({ message: "Complaint not found" });
@@ -472,12 +472,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all complaints for the organization
       const complaints = await storage.getComplaintsByOrganizationId(user.organizationId);
-      
+
       // Filter out complaints from admin users for threshold calculation
       const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
       const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
       const nonAdminComplaints = complaints.filter(c => nonAdminUserIds.includes(c.userId));
-      
+
       // Group all complaints by similarityGroup (including admin complaints for display)
       const groupedComplaints = complaints.reduce((groups: any, complaint: any) => {
         const group = complaint.similarityGroup || 'general-concerns';
@@ -551,7 +551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = insertFeedbackSchema.parse(req.body);
       data.userId = req.session.userId!;
-      
+
       const feedback = await storage.createFeedback(data);
       res.json(feedback);
     } catch (error) {
@@ -632,7 +632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/chat", async (req, res) => {
     try {
       const { message, chatHistory = [] } = req.body;
-      
+
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
       }
@@ -640,25 +640,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user is authenticated for complaint submission
       const isAuthenticated = !!req.session.userId;
       let user = null;
-      
+
       if (isAuthenticated) {
         user = await storage.getUser(req.session.userId!);
       }
 
       // Import functions from gemini service
       const { getChatResponse, isComplaintSubmission, categorizeComplaint, detectIntent, isComplaintConfirmationRequest } = await import("./services/gemini");
-      
+
       // Check if this message is a complaint submission (but not a status question)
       const intent = detectIntent(message);
       const isStatusQuestion = intent === 'question_status';
       const isConfirmationRequest = isAuthenticated && user && user.organizationId && isComplaintConfirmationRequest(message, chatHistory);
-      
+
       // Handle complaint confirmation requests (user asking chatbot to submit)
       if (isConfirmationRequest) {
         // Find the most recent detailed complaint in chat history
         const recentMessages = chatHistory.slice(-5);
         let complaintText = '';
-        
+
         for (let i = recentMessages.length - 1; i >= 0; i--) {
           const msg = recentMessages[i];
           if (msg.role === 'user' && msg.content.length > 50 && (
@@ -671,12 +671,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
         }
-        
+
         if (complaintText) {
           try {
             let finalCategory = 'other';
             let similarityGroup = 'general-concerns';
-            
+
             try {
               const aiResult = await categorizeComplaint(complaintText);
               finalCategory = aiResult.category;
@@ -700,17 +700,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Check for escalation based on threshold
             const organization = await storage.getOrganization(user.organizationId);
             const threshold = organization?.thresholdPercentage || 15;
-            
-            const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
+
+            // Get fresh data after creating the complaint
+            const updatedOrgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
             const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
             const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
-            const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
-            
+            const nonAdminComplaints = updatedOrgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
+
             const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
             const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
-            
-            // Auto-escalate if threshold is reached
-            if (groupPercentage >= threshold) {
+
+            console.log(`Confirmation Threshold check - Group: ${similarityGroup}, Similar complaints: ${similarComplaints.length}, Total non-admin complaints: ${nonAdminComplaints.length}, Percentage: ${groupPercentage.toFixed(2)}%, Threshold: ${threshold}%`);
+
+            // Auto-escalate if threshold is reached and there are pending complaints
+            if (groupPercentage >= threshold && similarComplaints.some(c => c.status === 'pending')) {
+              console.log(`Confirmation Auto-escalating ${similarComplaints.length} complaints in group "${similarityGroup}"`);
               for (const similarComplaint of similarComplaints.filter(c => c.status === 'pending')) {
                 await storage.updateComplaintStatus(similarComplaint.id, 'escalated');
               }
@@ -749,9 +753,9 @@ ${groupPercentage >= threshold ?
 `Your complaint is now in the system and being reviewed by administrators. You'll receive notifications about status updates.`}
 
 You can track the progress anytime in the 'My Complaints' section of your dashboard. Is there anything else I can help you with?`;
-            
+
             return res.json({ response, complaintSubmitted: true, complaintId: complaint.id });
-            
+
           } catch (error) {
             console.error("Failed to create complaint via chat confirmation:", error);
             const response = "I apologize, but there was an issue submitting your complaint. Please try using the complaint form instead, or contact support if the problem persists.";
@@ -759,13 +763,13 @@ You can track the progress anytime in the 'My Complaints' section of your dashbo
           }
         }
       }
-      
+
       // Direct complaint submission
       if (isAuthenticated && user && user.organizationId && !isStatusQuestion && isComplaintSubmission(message)) {
         try {
           let finalCategory = 'other';
           let similarityGroup = 'general-concerns';
-          
+
           try {
             const aiResult = await categorizeComplaint(message);
             finalCategory = aiResult.category;
@@ -789,15 +793,15 @@ You can track the progress anytime in the 'My Complaints' section of your dashbo
           // Check for escalation based on threshold
           const organization = await storage.getOrganization(user.organizationId);
           const threshold = organization?.thresholdPercentage || 15;
-          
+
           const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
           const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
           const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
           const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
-          
+
           const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
           const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
-          
+
           // Auto-escalate if threshold is reached
           if (groupPercentage >= threshold) {
             for (const similarComplaint of similarComplaints.filter(c => c.status === 'pending')) {
@@ -838,9 +842,9 @@ ${groupPercentage >= threshold ?
 `Your complaint is being reviewed by administrators. You'll receive notifications about any status updates.`}
 
 You can track the progress anytime in the 'My Complaints' section of your dashboard. Is there anything else I can help you with regarding this complaint?`;
-          
+
           return res.json({ response, complaintSubmitted: true, complaintId: complaint.id });
-          
+
         } catch (error) {
           console.error("Failed to create complaint via chat:", error);
           const response = "I apologize, but there was an issue submitting your complaint. Please try using the complaint form instead, or contact support if the problem persists.";
@@ -850,7 +854,7 @@ You can track the progress anytime in the 'My Complaints' section of your dashbo
 
       // Regular chat response (not a complaint)
       const response = await getChatResponse(message, chatHistory);
-      
+
       res.json({ response });
     } catch (error) {
       console.error("Chat error:", error);
