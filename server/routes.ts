@@ -420,7 +420,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/complaints/:id/status", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (!user?.isAdmin) {
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ message: "Must be part of an organization" });
+      }
+
+      // Check if user has admin role in the organization
+      const userRole = await storage.getUserRoleInOrganization(user.id, user.organizationId);
+      if (userRole !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { status } = req.body;
+      const complaintId = parseInt(req.params.id);
+
+      const complaint = await storage.updateComplaintStatus(complaintId, status);
+      if (!complaint) {
+        return res.status(404).json({ message: "Complaint not found" });
+      }
+
+      // Create notification for user
+      await storage.createNotification({
+        title: "Complaint Status Updated",
+        message: `Your complaint has been ${status}`,
+        userId: complaint.userId,
+        organizationId: complaint.organizationId
+      });
+
+      res.json(complaint);
+    } catch (error) {
+      console.error("Update complaint status error:", error);
+      res.status(500).json({ message: "Failed to update complaint status" });
+    }
+  });
+
+  // Add the PATCH endpoint that the frontend is expecting
+  app.patch("/api/complaints/:id", requireAuth, async (req, res) => {
+    try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ message: "Must be part of an organization" });
+      }
+
+      // Check if user has admin role in the organization
+      const userRole = await storage.getUserRoleInOrganization(user.id, user.organizationId);
+      if (userRole !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -466,7 +509,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/complaints/grouped", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (!user?.isAdmin || !user.organizationId) {
+      if (!user || !user.organizationId) {
+        return res.status(400).json({ message: "Must be part of an organization" });
+      }
+
+      // Check if user has admin role in the organization
+      const userRole = await storage.getUserRoleInOrganization(user.id, user.organizationId);
+      if (userRole !== 'admin') {
         return res.status(403).json({ message: "Admin access required" });
       }
 
