@@ -9,6 +9,7 @@ import bcrypt from "bcryptjs";
 import { insertUserSchema, insertOrganizationSchema, insertComplaintSchema, insertFeedbackSchema } from "@shared/schema";
 import { categorizeComplaint } from "./services/gemini";
 import { nanoid } from "nanoid";
+import { z } from "zod";
 
 declare module "express-session" {
   interface SessionData {

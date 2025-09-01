@@ -144,7 +144,7 @@ export default function ComplaintForm({ open, onClose }: ComplaintFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="hr">Human Resources</SelectItem>
+                      <SelectItem value="hr">HR Issues</SelectItem>
                       <SelectItem value="infrastructure">Infrastructure</SelectItem>
                       <SelectItem value="management">Management</SelectItem>
                       <SelectItem value="cafeteria">Cafeteria</SelectItem>
