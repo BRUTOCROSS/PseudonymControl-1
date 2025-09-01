@@ -19,9 +19,17 @@ import {
   CheckCircle,
   Clock,
   Building,
-  Users
+  Users,
+  FileText,
+  Eye,
+  Brain
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
+
+// Helper function to format dates (assuming it's needed elsewhere and not provided in changes)
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString();
+};
 
 export default function AdminDashboard() {
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
@@ -61,6 +69,7 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/complaints"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/complaints/grouped"] }); // Invalidate grouped complaints as well
       queryClient.invalidateQueries({ queryKey: ["/api/complaints/stats"] });
       toast({
         title: "Complaint Updated",
@@ -101,6 +110,9 @@ export default function AdminDashboard() {
       });
     },
   });
+
+  // Alias for mutation to match the usage in the changes
+  const updateStatusMutation = updateComplaintMutation;
 
   const handleUpdateComplaint = (id: number, status: string) => {
     updateComplaintMutation.mutate({ id, status });
@@ -315,79 +327,149 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* AI Summary */}
-                      {group.aiSummary && (
-                        <div className="bg-white rounded-lg p-4 mb-4 border">
-                          <div className="flex items-center space-x-2 mb-3">
-                            <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded text-white text-xs flex items-center justify-center">
-                              AI
-                            </div>
-                            <span className="font-medium text-neutral-800">Analysis Summary</span>
-                          </div>
+                      {/* Show AI Summary for escalated groups, individual complaints for others */}
+                      {group.shouldEscalate && group.aiSummary ? (
+                        <div className="space-y-4">
+                          {/* AI Summary Section */}
+                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                            <h4 className="font-semibold text-blue-900 flex items-center mb-3">
+                              <Brain size={16} className="mr-2" />
+                              AI Analysis Summary
+                            </h4>
 
-                          <p className="text-neutral-700 mb-3">{group.aiSummary.summary}</p>
+                            <div className="space-y-3">
+                              <div>
+                                <h5 className="font-medium text-blue-800 mb-1">Executive Summary:</h5>
+                                <p className="text-blue-700 text-sm leading-relaxed">
+                                  {group.aiSummary.summary}
+                                </p>
+                              </div>
 
-                          {group.aiSummary.keyIssues && group.aiSummary.keyIssues.length > 0 && (
-                            <div>
-                              <p className="text-sm font-medium text-neutral-600 mb-2">Key Issues Identified:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {group.aiSummary.keyIssues.map((issue: string, i: number) => (
-                                  <Badge key={i} variant="outline" className="text-xs">
-                                    {issue}
-                                  </Badge>
-                                ))}
+                              <div>
+                                <h5 className="font-medium text-blue-800 mb-1">Key Issues Identified:</h5>
+                                <ul className="list-disc list-inside text-blue-700 text-sm space-y-1">
+                                  {group.aiSummary.keyIssues.map((issue: string, idx: number) => (
+                                    <li key={idx}>{issue}</li>
+                                  ))}
+                                </ul>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-2 border-t border-blue-200">
+                                <span className="text-sm text-blue-600">
+                                  <strong>{group.aiSummary.affectedCount}</strong> employees affected
+                                </span>
+                                <Badge variant={
+                                  group.aiSummary.urgencyLevel === 'high' ? 'destructive' :
+                                  group.aiSummary.urgencyLevel === 'medium' ? 'secondary' : 'outline'
+                                }>
+                                  {group.aiSummary.urgencyLevel.toUpperCase()} PRIORITY
+                                </Badge>
                               </div>
                             </div>
-                          )}
+                          </div>
+
+                          {/* Quick Actions for Escalated Group */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-neutral-600">
+                              {group.count} similar complaints in this group
+                            </span>
+                            <div className="flex space-x-2">
+                              <Button variant="outline" size="sm">
+                                <Eye size={16} className="mr-2" />
+                                View All Details
+                              </Button>
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                onClick={() => {
+                                  // Mark all as resolved
+                                  group.complaints.forEach((complaint: any) => {
+                                    if (complaint.status === 'escalated') {
+                                      updateStatusMutation.mutate({ id: complaint.id, status: 'resolved' });
+                                    }
+                                  });
+                                }}
+                              >
+                                <CheckCircle size={16} className="mr-2" />
+                                Resolve All
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        // Show individual complaints for non-escalated groups
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-neutral-800 flex items-center">
+                            <FileText size={16} className="mr-2" />
+                            Complaints in this group ({group.count})
+                          </h4>
+
+                          <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {group.complaints.slice(0, 5).map((complaint: any) => (
+                              <div key={complaint.id} className="border border-neutral-200 rounded-lg p-4 bg-white">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center space-x-2">
+                                    <Badge variant="outline" className={`category-${complaint.category}`}>
+                                      {complaint.category}
+                                    </Badge>
+                                    <Badge variant={getStatusBadgeVariant(complaint.status)}>
+                                      {complaint.status}
+                                    </Badge>
+                                    <span className="text-xs text-neutral-500">
+                                      #{complaint.id}
+                                    </span>
+                                  </div>
+                                  <span className="text-xs text-neutral-500">
+                                    {formatDate(complaint.createdAt)}
+                                  </span>
+                                </div>
+
+                                <p className="text-neutral-700 mb-3 line-clamp-2">
+                                  {complaint.content}
+                                </p>
+
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    {complaint.similarityGroup && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        Group {complaint.similarityGroup}
+                                      </Badge>
+                                    )}
+                                    {complaint.confidence && (
+                                      <span className="text-xs text-neutral-500">
+                                        Confidence: {Math.round(complaint.confidence * 100)}%
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <Select
+                                    value={complaint.status}
+                                    onValueChange={(value) => updateStatusMutation.mutate({ id: complaint.id, status: value })}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="pending">Pending</SelectItem>
+                                      <SelectItem value="escalated">Escalated</SelectItem>
+                                      <SelectItem value="resolved">Resolved</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            ))}
+
+                            {group.complaints.length > 5 && (
+                              <div className="text-center">
+                                <Button variant="ghost" size="sm">
+                                  <Eye size={16} className="mr-2" />
+                                  View {group.complaints.length - 5} more complaints
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
-
-                      {/* Group Actions */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedComplaint(group)}
-                          >
-                            View All {group.count} Complaints
-                          </Button>
-                          <span className="text-xs text-neutral-500">
-                            Latest: {new Date(group.latestComplaint.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          {group.shouldEscalate && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                // Escalate all pending complaints in this group
-                                group.complaints
-                                  .filter((c: any) => c.status === 'pending')
-                                  .forEach((c: any) => handleUpdateComplaint(c.id, 'escalated'));
-                              }}
-                              disabled={updateComplaintMutation.isPending}
-                            >
-                              Escalate Group
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              // Mark all pending complaints in this group as resolved
-                              group.complaints
-                                .filter((c: any) => c.status === 'pending')
-                                .forEach((c: any) => handleUpdateComplaint(c.id, 'resolved'));
-                            }}
-                            disabled={updateComplaintMutation.isPending}
-                          >
-                            Resolve Group
-                          </Button>
-                        </div>
-                      </div>
                     </div>
                   ))}
                 </div>
