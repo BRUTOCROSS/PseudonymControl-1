@@ -56,9 +56,10 @@ const intentResponses: Record<Intent, string[]> = {
     "The threshold system ensures serious or widespread issues get priority attention from management."
   ],
   question_status: [
-    "You can check your complaint status in the dashboard. Complaints show as pending, under review, or resolved.",
-    "Track complaint progress through your dashboard. You'll see status updates as administrators work on your case.",
-    "Status updates appear in real-time. Check your dashboard or notifications for the latest information on your complaints."
+    "Yes, your complaint has been successfully submitted and is now in the system! You can track its progress in your dashboard under 'My Complaints'.",
+    "Absolutely! Your complaint was successfully lodged and is currently pending review. You'll receive notifications as the status updates.",
+    "Yes, your complaint has been submitted successfully. It's now being reviewed by administrators and you can monitor its progress through your dashboard.",
+    "Confirmed! Your complaint is in the system and being processed. You can check its current status anytime in the 'My Complaints' section."
   ],
   feedback: [
     "Thank you for your feedback! It helps us improve the complaint resolution process.",
@@ -226,7 +227,7 @@ Respond with JSON in this exact format:
   }
 }
 
-function detectIntent(message: string): Intent {
+export function detectIntent(message: string): Intent {
   const lowerMessage = message.toLowerCase();
   
   // Greeting patterns
@@ -239,8 +240,16 @@ function detectIntent(message: string): Intent {
     return 'help';
   }
   
-  // Complaint submission
-  if (/\b(submit|file|report|complaint|issue|problem)\b/.test(lowerMessage)) {
+  // Status/confirmation questions - check these BEFORE submit_complaint
+  if (/\b(is|was|has|did).*(submitted|lodged|filed|sent|received|successful)\b/.test(lowerMessage) ||
+      /\b(my complaint).*(submitted|lodged|filed|sent|received)\b/.test(lowerMessage) ||
+      /\b(so|was|is).*(complaint|issue).*(submitted|lodged|successful)\b/.test(lowerMessage)) {
+    return 'question_status';
+  }
+  
+  // Complaint submission - only if not a status question
+  if (/\b(submit|file|report|complaint|issue|problem)\b/.test(lowerMessage) && 
+      !/\b(is|was|has|did|so|my complaint).*(submitted|lodged|filed|sent|received|successful)\b/.test(lowerMessage)) {
     return 'submit_complaint';
   }
   

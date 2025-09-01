@@ -646,10 +646,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Import functions from gemini service
-      const { getChatResponse, isComplaintSubmission, categorizeComplaint } = await import("./services/gemini");
+      const { getChatResponse, isComplaintSubmission, categorizeComplaint, detectIntent } = await import("./services/gemini");
       
-      // Check if this message is a complaint submission
-      if (isAuthenticated && user && user.organizationId && isComplaintSubmission(message)) {
+      // Check if this message is a complaint submission (but not a status question)
+      const intent = detectIntent(message);
+      const isStatusQuestion = intent === 'question_status';
+      
+      if (isAuthenticated && user && user.organizationId && !isStatusQuestion && isComplaintSubmission(message)) {
         // This is a complaint - create it in the database
         try {
           let finalCategory = 'other';
