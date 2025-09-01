@@ -22,7 +22,6 @@ import {
   Users
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
-import Chatbot from "@/components/Chatbot";
 
 export default function AdminDashboard() {
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
@@ -508,8 +507,6 @@ export default function AdminDashboard() {
           </Tabs>
         </main>
       </div>
-
-      <Chatbot isOpen={false} onToggle={() => {}} />
     </div>
   );
 }
