@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import Sidebar from "@/components/Sidebar";
 import Chatbot from "@/components/Chatbot";
 
 export default function UserDashboard() {
+  const [showChatbot, setShowChatbot] = useState(false);
   const { user } = useAuth();
 
   const { data: complaints = [] } = useQuery({
@@ -211,7 +213,10 @@ export default function UserDashboard() {
         </main>
       </div>
 
-      <Chatbot isOpen={false} onToggle={() => {}} />
+      <Chatbot 
+        isOpen={showChatbot}
+        onToggle={() => setShowChatbot(!showChatbot)}
+      />
     </div>
   );
 }
