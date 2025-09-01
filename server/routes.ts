@@ -19,14 +19,16 @@ declare module "express-session" {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware
   app.use(session({
-    secret: process.env.SESSION_SECRET || "fallback-secret-key",
+    secret: process.env.SESSION_SECRET || "fallback-secret-key-for-development",
     resave: false,
     saveUninitialized: false,
     cookie: {
       secure: false, // Set to true in production with HTTPS
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24 * 7 // 1 week
-    }
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+      sameSite: 'lax'
+    },
+    name: 'pseudoresolve.sid'
   }));
 
   // Auth middleware
@@ -179,11 +181,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Organization routes
   app.post("/api/organizations", requireAuth, async (req, res) => {
     try {
+      console.log("Creating organization with user ID:", req.session.userId);
+      console.log("Request body:", req.body);
+      
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const requestData = req.body;
       requestData.accessKey = nanoid(12);
+      
+      // Validate the data
       const data = insertOrganizationSchema.parse(requestData);
+      console.log("Parsed organization data:", data);
       
       const organization = await storage.createOrganization(data);
+      console.log("Created organization:", organization);
       
       // Make the creator an admin in the user-organization relationship
       await storage.addUserToOrganization(req.session.userId!, organization.id, 'admin');
@@ -197,6 +211,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(organization);
     } catch (error) {
       console.error("Create organization error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid organization data", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to create organization" });
     }
   });
