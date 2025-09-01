@@ -281,6 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Return only organizations the user is a member of
       const userOrganizations = await storage.getUserOrganizations(req.session.userId!);
+      console.log(`Fetched user organizations for user ${req.session.userId}:`, userOrganizations);
       res.json(userOrganizations);
     } catch (error) {
       console.error("Get user organizations error:", error);

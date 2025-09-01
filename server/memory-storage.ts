@@ -13,6 +13,7 @@ export class MemoryStorage implements IStorage {
   private notifications: Notification[] = [];
   private userOrganizations: UserOrganization[] = [];
   private nextId = 1;
+  private nextUserOrgId = 1; // Added to track next ID for userOrganizations
 
   // User operations
   async getUser(id: number): Promise<User | undefined> {
@@ -227,45 +228,58 @@ export class MemoryStorage implements IStorage {
   // User-Organization operations
   async getUserOrganizations(userId: number): Promise<any[]> {
     const userOrgRelations = this.userOrganizations.filter(uo => uo.userId === userId);
+    const result = userOrgRelations.map(uo => {
+      const org = this.organizations.find(o => o.id === uo.organizationId);
+      if (!org) return null;
 
-    return userOrgRelations.map(relation => {
-      const organization = this.organizations.find(org => org.id === relation.organizationId);
       return {
-        ...organization,
-        role: relation.role,
-        joinedAt: relation.joinedAt
+        id: org.id,
+        name: org.name,
+        description: org.description,
+        accessKey: org.accessKey,
+        thresholdPercentage: org.thresholdPercentage,
+        createdAt: org.createdAt,
+        role: uo.role,
+        joinedAt: uo.joinedAt || uo.createdAt || new Date()
       };
-    }).filter(org => org.id); // Filter out any null organizations
+    }).filter(Boolean);
+
+    console.log(`getUserOrganizations for user ${userId}:`, result);
+    return result;
   }
 
   async getUserRoleInOrganization(userId: number, organizationId: number): Promise<string> {
-    const userOrg = this.userOrganizations.find(uo => 
+    const userOrg = this.userOrganizations.find(uo =>
       uo.userId === userId && uo.organizationId === organizationId
     );
     return userOrg?.role || 'member';
   }
 
-  async addUserToOrganization(userId: number, organizationId: number, role: string = 'member'): Promise<void> {
-    // Check if relationship already exists
-    const existingRelation = this.userOrganizations.find(
+  async addUserToOrganization(userId: number, organizationId: number, role: string): Promise<UserOrganization> {
+    const existingIndex = this.userOrganizations.findIndex(
       uo => uo.userId === userId && uo.organizationId === organizationId
     );
 
-    if (existingRelation) {
-      // Update role if different
-      if (existingRelation.role !== role) {
-        existingRelation.role = role;
-      }
-      return;
-    }
-
-    const relation = {
-      id: this.userOrganizations.length + 1,
+    const userOrg: UserOrganization = {
+      id: existingIndex >= 0 ? this.userOrganizations[existingIndex].id : this.nextUserOrgId++,
       userId,
       organizationId,
       role,
-      joinedAt: new Date()
+      joinedAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
-    this.userOrganizations.push(relation);
+
+    if (existingIndex >= 0) {
+      // Update existing relationship
+      this.userOrganizations[existingIndex] = userOrg;
+    } else {
+      // Create new relationship
+      this.userOrganizations.push(userOrg);
+    }
+
+    console.log(`Added user ${userId} to organization ${organizationId} with role ${role}`);
+    console.log('Current userOrganizations:', this.userOrganizations);
+    return userOrg;
   }
 }
