@@ -147,6 +147,13 @@ export class MemoryStorage implements IStorage {
 
   async getComplaintStats(organizationId: number): Promise<any> {
     const orgComplaints = this.complaints.filter(c => c.organizationId === organizationId);
+    
+    // Get non-admin users for threshold-related stats
+    const orgUsers = this.users.filter(u => u.organizationId === organizationId);
+    const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
+    const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
+    
+    // Use all complaints for total counts (including admin complaints for visibility)
     const total = orgComplaints.length;
     const pending = orgComplaints.filter(c => c.status === 'pending').length;
     const resolved = orgComplaints.filter(c => c.status === 'resolved').length;
@@ -157,6 +164,8 @@ export class MemoryStorage implements IStorage {
       pending,
       resolved,
       escalated,
+      // Total complaints from non-admin users (used for threshold calculations)
+      nonAdminTotal: nonAdminComplaints.length,
       categories: {
         hr: orgComplaints.filter(c => c.category === 'hr').length,
         infrastructure: orgComplaints.filter(c => c.category === 'infrastructure').length,
