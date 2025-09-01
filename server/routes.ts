@@ -315,8 +315,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all complaints for this organization to calculate percentage
       const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
-      const similarComplaints = orgComplaints.filter(c => c.similarityGroup === similarityGroup);
-      const groupPercentage = orgComplaints.length > 0 ? (similarComplaints.length / orgComplaints.length) * 100 : 0;
+      
+      // Filter out complaints from admin users for threshold calculation
+      const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
+      const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
+      const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
+      
+      const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
+      const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
       
       // Auto-escalate if threshold is reached
       if (groupPercentage >= threshold) {
@@ -430,7 +436,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all complaints for the organization
       const complaints = await storage.getComplaintsByOrganizationId(user.organizationId);
       
-      // Group complaints by similarityGroup
+      // Filter out complaints from admin users for threshold calculation
+      const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
+      const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
+      const nonAdminComplaints = complaints.filter(c => nonAdminUserIds.includes(c.userId));
+      
+      // Group all complaints by similarityGroup (including admin complaints for display)
       const groupedComplaints = complaints.reduce((groups: any, complaint: any) => {
         const group = complaint.similarityGroup || 'general-concerns';
         if (!groups[group]) {
@@ -443,7 +454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get organization threshold
       const organization = await storage.getOrganization(user.organizationId);
       const threshold = organization?.thresholdPercentage || 15;
-      const totalComplaints = complaints.length;
+      const totalComplaints = nonAdminComplaints.length; // Use non-admin complaints for threshold calculation
 
       // Create summaries for each group and check thresholds
       const { summarizeComplaintGroup } = await import("./services/gemini");
@@ -451,7 +462,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const [similarityGroup, groupComplaints] of Object.entries(groupedComplaints)) {
         const complaintsArray = groupComplaints as any[];
-        const groupPercentage = totalComplaints > 0 ? (complaintsArray.length / totalComplaints) * 100 : 0;
+        // Calculate percentage based on non-admin complaints only
+        const nonAdminGroupComplaints = complaintsArray.filter(c => nonAdminUserIds.includes(c.userId));
+        const groupPercentage = totalComplaints > 0 ? (nonAdminGroupComplaints.length / totalComplaints) * 100 : 0;
         const shouldEscalate = groupPercentage >= threshold && complaintsArray.some(c => c.status === 'pending');
 
         // Generate AI summary for this group
