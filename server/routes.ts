@@ -646,14 +646,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Import functions from gemini service
-      const { getChatResponse, isComplaintSubmission, categorizeComplaint, detectIntent } = await import("./services/gemini");
+      const { getChatResponse, isComplaintSubmission, categorizeComplaint, detectIntent, isComplaintConfirmationRequest } = await import("./services/gemini");
       
       // Check if this message is a complaint submission (but not a status question)
       const intent = detectIntent(message);
       const isStatusQuestion = intent === 'question_status';
+      const isConfirmationRequest = isAuthenticated && user && user.organizationId && isComplaintConfirmationRequest(message, chatHistory);
       
+      // Handle complaint confirmation requests (user asking chatbot to submit)
+      if (isConfirmationRequest) {
+        // Find the most recent detailed complaint in chat history
+        const recentMessages = chatHistory.slice(-5);
+        let complaintText = '';
+        
+        for (let i = recentMessages.length - 1; i >= 0; i--) {
+          const msg = recentMessages[i];
+          if (msg.role === 'user' && msg.content.length > 50 && (
+            isComplaintSubmission(msg.content) ||
+            msg.content.toLowerCase().includes('wifi') ||
+            msg.content.toLowerCase().includes('internet') ||
+            msg.content.toLowerCase().includes('problem')
+          )) {
+            complaintText = msg.content;
+            break;
+          }
+        }
+        
+        if (complaintText) {
+          try {
+            let finalCategory = 'other';
+            let similarityGroup = 'general-concerns';
+            
+            try {
+              const aiResult = await categorizeComplaint(complaintText);
+              finalCategory = aiResult.category;
+              similarityGroup = aiResult.similarityGroup;
+            } catch (error) {
+              console.error("AI categorization failed:", error);
+            }
+
+            const complaintData = {
+              content: complaintText,
+              category: finalCategory,
+              similarityGroup,
+              userId: user.id,
+              organizationId: user.organizationId,
+              status: 'pending' as const,
+              escalated: false
+            };
+
+            const complaint = await storage.createComplaint(complaintData);
+
+            // Check for escalation based on threshold
+            const organization = await storage.getOrganization(user.organizationId);
+            const threshold = organization?.thresholdPercentage || 15;
+            
+            const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
+            const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
+            const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
+            const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
+            
+            const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
+            const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
+            
+            // Auto-escalate if threshold is reached
+            if (groupPercentage >= threshold) {
+              for (const similarComplaint of similarComplaints.filter(c => c.status === 'pending')) {
+                await storage.updateComplaintStatus(similarComplaint.id, 'escalated');
+              }
+            }
+
+            // Create notification for admins
+            const admins = await storage.getUsersByOrganizationId(user.organizationId);
+            const notificationTitle = groupPercentage >= threshold 
+              ? "URGENT: Complaint Group Auto-Escalated" 
+              : "New Complaint Submitted";
+            const notificationMessage = groupPercentage >= threshold
+              ? `${similarComplaints.length} complaints about "${similarityGroup}" have been auto-escalated (${groupPercentage.toFixed(1)}% of total complaints)`
+              : `A new ${finalCategory} complaint has been submitted`;
+
+            for (const admin of admins.filter(u => u.isAdmin)) {
+              await storage.createNotification({
+                title: notificationTitle,
+                message: notificationMessage,
+                userId: admin.id,
+                organizationId: user.organizationId
+              });
+            }
+
+            // Return complaint confirmation
+            const response = `Perfect! I've now submitted your complaint for you. Here are the details:
+
+**Complaint Successfully Lodged:**
+- **Category:** ${finalCategory.charAt(0).toUpperCase() + finalCategory.slice(1)}
+- **Similarity Group:** ${similarityGroup}
+- **Status:** Pending review
+- **Complaint ID:** #${complaint.id}
+- **Anonymous ID:** ${user.pseudonym}
+
+${groupPercentage >= threshold ? 
+`🚨 **IMPORTANT:** Your complaint has triggered automatic escalation! ${similarComplaints.length} similar complaints (${groupPercentage.toFixed(1)}% of organization) have been escalated to management for urgent attention.` :
+`Your complaint is now in the system and being reviewed by administrators. You'll receive notifications about status updates.`}
+
+You can track the progress anytime in the 'My Complaints' section of your dashboard. Is there anything else I can help you with?`;
+            
+            return res.json({ response, complaintSubmitted: true, complaintId: complaint.id });
+            
+          } catch (error) {
+            console.error("Failed to create complaint via chat confirmation:", error);
+            const response = "I apologize, but there was an issue submitting your complaint. Please try using the complaint form instead, or contact support if the problem persists.";
+            return res.json({ response });
+          }
+        }
+      }
+      
+      // Direct complaint submission
       if (isAuthenticated && user && user.organizationId && !isStatusQuestion && isComplaintSubmission(message)) {
-        // This is a complaint - create it in the database
         try {
           let finalCategory = 'other';
           let similarityGroup = 'general-concerns';
@@ -678,28 +786,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const complaint = await storage.createComplaint(complaintData);
 
+          // Check for escalation based on threshold
+          const organization = await storage.getOrganization(user.organizationId);
+          const threshold = organization?.thresholdPercentage || 15;
+          
+          const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
+          const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
+          const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
+          const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
+          
+          const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
+          const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
+          
+          // Auto-escalate if threshold is reached
+          if (groupPercentage >= threshold) {
+            for (const similarComplaint of similarComplaints.filter(c => c.status === 'pending')) {
+              await storage.updateComplaintStatus(similarComplaint.id, 'escalated');
+            }
+          }
+
           // Create notification for admins
           const admins = await storage.getUsersByOrganizationId(user.organizationId);
+          const notificationTitle = groupPercentage >= threshold 
+            ? "URGENT: Complaint Group Auto-Escalated" 
+            : "New Complaint Submitted";
+          const notificationMessage = groupPercentage >= threshold
+            ? `${similarComplaints.length} complaints about "${similarityGroup}" have been auto-escalated (${groupPercentage.toFixed(1)}% of total complaints)`
+            : `A new ${finalCategory} complaint has been submitted`;
+
           for (const admin of admins.filter(u => u.isAdmin)) {
             await storage.createNotification({
-              title: "New Complaint Submitted",
-              message: `A new ${finalCategory} complaint has been submitted`,
+              title: notificationTitle,
+              message: notificationMessage,
               userId: admin.id,
               organizationId: user.organizationId
             });
           }
 
           // Return complaint confirmation
-          const response = `Thank you! Your complaint has been successfully lodged and submitted anonymously. 
+          const response = `Thank you! Your complaint has been successfully submitted and logged anonymously.
 
 **Complaint Details:**
-- **Category:** ${finalCategory}
+- **Category:** ${finalCategory.charAt(0).toUpperCase() + finalCategory.slice(1)}
+- **Similarity Group:** ${similarityGroup}
 - **Status:** Pending review
 - **Complaint ID:** #${complaint.id}
+- **Anonymous ID:** ${user.pseudonym}
 
-Your complaint will be reviewed by the appropriate administrators. You'll receive notifications about any status updates. You can also check the status anytime in the 'My Complaints' section of your dashboard.
+${groupPercentage >= threshold ? 
+`🚨 **ESCALATED:** Your complaint triggered automatic escalation! ${similarComplaints.length} similar complaints (${groupPercentage.toFixed(1)}% of organization) have been escalated to management.` :
+`Your complaint is being reviewed by administrators. You'll receive notifications about any status updates.`}
 
-Is there anything else I can help you with regarding this complaint or the process?`;
+You can track the progress anytime in the 'My Complaints' section of your dashboard. Is there anything else I can help you with regarding this complaint?`;
           
           return res.json({ response, complaintSubmitted: true, complaintId: complaint.id });
           

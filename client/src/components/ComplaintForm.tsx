@@ -137,13 +137,14 @@ export default function ComplaintForm({ open, onClose }: ComplaintFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Complaint Category</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value || "auto"}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category (AI will suggest)" />
+                        <SelectValue placeholder="Select category (optional)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="auto">Auto-categorize with AI</SelectItem>
                       <SelectItem value="hr">HR Issues</SelectItem>
                       <SelectItem value="infrastructure">Infrastructure</SelectItem>
                       <SelectItem value="management">Management</SelectItem>

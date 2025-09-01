@@ -128,7 +128,7 @@ export function isComplaintSubmission(message: string): boolean {
   const lowerMessage = message.toLowerCase();
   
   // Check message length - complaints are usually detailed
-  if (message.length < 30) {
+  if (message.length < 20) {
     return false;
   }
 
@@ -138,7 +138,9 @@ export function isComplaintSubmission(message: string): boolean {
     'harassment', 'discrimination', 'bullying', 'unfair', 'unsafe',
     'violated', 'violation', 'inappropriate', 'unprofessional',
     'hostile environment', 'workplace issue', 'submit a complaint',
-    'file a complaint', 'lodge a complaint', 'raise a concern'
+    'file a complaint', 'lodge a complaint', 'raise a concern',
+    'wifi', 'wi-fi', 'internet', 'network', 'connectivity', 'slow',
+    'disconnecting', 'not working', 'broken', 'malfunctioning'
   ];
 
   // Direct complaint submission phrases
@@ -146,7 +148,8 @@ export function isComplaintSubmission(message: string): boolean {
     'i want to file', 'i want to submit', 'i want to report',
     'i need to report', 'i need to complain', 'i have a complaint',
     'i want to lodge', 'submit complaint', 'file complaint',
-    'report an issue', 'there is a problem', 'this is a complaint'
+    'report an issue', 'there is a problem', 'this is a complaint',
+    'submit this', 'lodge this', 'file this'
   ];
 
   // Check for direct submission phrases
@@ -162,16 +165,32 @@ export function isComplaintSubmission(message: string): boolean {
   // Check for detailed description patterns (sentences with complaint context)
   const hasDetailedDescription = (
     (lowerMessage.includes('my manager') || lowerMessage.includes('supervisor') || 
-     lowerMessage.includes('colleague') || lowerMessage.includes('coworker')) &&
+     lowerMessage.includes('colleague') || lowerMessage.includes('coworker') ||
+     lowerMessage.includes('office') || lowerMessage.includes('workplace')) &&
     (lowerMessage.includes('said') || lowerMessage.includes('did') || 
-     lowerMessage.includes('told') || lowerMessage.includes('made'))
+     lowerMessage.includes('told') || lowerMessage.includes('made') ||
+     lowerMessage.includes('is') || lowerMessage.includes('has been') ||
+     lowerMessage.includes('keeps') || lowerMessage.includes('always'))
   ) || (
-    lowerMessage.includes('department') && 
+    (lowerMessage.includes('department') || lowerMessage.includes('system') ||
+     lowerMessage.includes('equipment') || lowerMessage.includes('facility')) && 
     (lowerMessage.includes('not') || lowerMessage.includes('doesn\'t') || 
-     lowerMessage.includes('refuses') || lowerMessage.includes('ignores'))
+     lowerMessage.includes('refuses') || lowerMessage.includes('ignores') ||
+     lowerMessage.includes('slow') || lowerMessage.includes('broken') ||
+     lowerMessage.includes('disconnecting') || lowerMessage.includes('affecting'))
   );
 
-  return hasDirectPhrase || (hasComplaintKeywords && hasDetailedDescription);
+  // Infrastructure-specific complaints (like WiFi issues)
+  const hasInfrastructureComplaint = (
+    (lowerMessage.includes('wifi') || lowerMessage.includes('wi-fi') ||
+     lowerMessage.includes('internet') || lowerMessage.includes('network') ||
+     lowerMessage.includes('connectivity') || lowerMessage.includes('connection')) &&
+    (lowerMessage.includes('slow') || lowerMessage.includes('disconnecting') ||
+     lowerMessage.includes('not working') || lowerMessage.includes('issues') ||
+     lowerMessage.includes('problems') || lowerMessage.includes('affecting'))
+  );
+
+  return hasDirectPhrase || hasInfrastructureComplaint || (hasComplaintKeywords && hasDetailedDescription);
 }
 
 export async function categorizeComplaint(text: string): Promise<{
@@ -225,6 +244,37 @@ Respond with JSON in this exact format:
       similarityGroup: 'general'
     };
   }
+}
+
+// Function to check if user wants the chatbot to submit a previously described complaint
+export function isComplaintConfirmationRequest(message: string, chatHistory: Array<{role: string, content: string}>): boolean {
+  const lowerMessage = message.toLowerCase();
+  
+  // Check if user is asking why chatbot won't submit or asking chatbot to submit
+  const confirmationPhrases = [
+    'why not you', 'why not submit', 'why can\'t you submit', 'submit it',
+    'lodge it', 'file it', 'you submit', 'submit this', 'submit my complaint',
+    'go ahead and submit', 'please submit', 'can you submit', 'will you submit'
+  ];
+  
+  const hasConfirmationRequest = confirmationPhrases.some(phrase => 
+    lowerMessage.includes(phrase)
+  );
+  
+  // Check if there was a recent detailed complaint description in chat history
+  const recentMessages = chatHistory.slice(-5); // Check last 5 messages
+  const hasRecentComplaint = recentMessages.some(msg => 
+    msg.role === 'user' && msg.content.length > 50 && (
+      isComplaintSubmission(msg.content) ||
+      msg.content.toLowerCase().includes('wifi') ||
+      msg.content.toLowerCase().includes('wi-fi') ||
+      msg.content.toLowerCase().includes('internet') ||
+      msg.content.toLowerCase().includes('problem') ||
+      msg.content.toLowerCase().includes('issue')
+    )
+  );
+  
+  return hasConfirmationRequest && hasRecentComplaint;
 }
 
 export function detectIntent(message: string): Intent {
