@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+// Temporarily using memory storage due to database connectivity issues
+// import { storage } from "./storage";
+import { MemoryStorage } from "./memory-storage";
+const storage = new MemoryStorage();
 import session from "express-session";
 import bcrypt from "bcryptjs";
 import { insertUserSchema, insertOrganizationSchema, insertComplaintSchema, insertFeedbackSchema } from "@shared/schema";
