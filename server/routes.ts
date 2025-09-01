@@ -65,8 +65,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get organization if access key provided
       let organizationId = null;
+      let organization = null;
       if (organizationAccessKey) {
-        const organization = await storage.getOrganizationByAccessKey(organizationAccessKey);
+        organization = await storage.getOrganizationByAccessKey(organizationAccessKey);
         if (!organization) {
           return res.status(400).json({ message: "Invalid organization access key" });
         }
@@ -92,6 +93,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.createUser(userData);
       req.session.userId = user.id;
+
+      // If joining organization during registration, add user to organization
+      if (organization) {
+        await storage.addUserToOrganization(user.id, organization.id, 'member');
+      }
 
       res.json({ 
         id: user.id, 
@@ -214,6 +220,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Organization not found" });
       }
 
+      // Check if user is already a member
+      const existingRole = await storage.getUserRoleInOrganization(req.session.userId!, organization.id);
+      if (existingRole !== 'none') {
+        return res.status(400).json({ message: "You are already a member of this organization" });
+      }
+
       // Add user as a member to the organization
       await storage.addUserToOrganization(req.session.userId!, organization.id, 'member');
 
@@ -248,11 +260,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update user's current organization and admin status based on role
       await storage.updateUser(req.session.userId!, { 
-        organizationId: organization.id,
+        organizationId: organizationId,
         isAdmin: userRole === 'admin'
       });
 
-      res.json({ message: "Organization switched successfully" });
+      res.json({ 
+        message: "Organization switched successfully",
+        organization: {
+          ...organization,
+          role: userRole
+        }
+      });
     } catch (error) {
       console.error("Switch organization error:", error);
       res.status(500).json({ message: "Failed to switch organization" });

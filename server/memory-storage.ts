@@ -56,6 +56,9 @@ export class MemoryStorage implements IStorage {
 
   // Organization operations
   async getOrganization(id: number): Promise<Organization | undefined> {
+    if (!id || isNaN(id)) {
+      return null;
+    }
     return this.organizations.find(org => org.id === id);
   }
 
@@ -223,18 +226,16 @@ export class MemoryStorage implements IStorage {
 
   // User-Organization operations
   async getUserOrganizations(userId: number): Promise<any[]> {
-    const userOrgs = this.userOrganizations.filter(uo => uo.userId === userId);
-    return Promise.all(userOrgs.map(async uo => {
-      const org = await this.getOrganization(uo.organizationId);
+    const userOrgRelations = this.userOrganizations.filter(uo => uo.userId === userId);
+
+    return userOrgRelations.map(relation => {
+      const organization = this.organizations.find(org => org.id === relation.organizationId);
       return {
-        id: uo.id,
-        userId: uo.userId,
-        organizationId: uo.organizationId,
-        role: uo.role,
-        joinedAt: uo.joinedAt,
-        organization: org
+        ...organization,
+        role: relation.role,
+        joinedAt: relation.joinedAt
       };
-    }));
+    }).filter(org => org.id); // Filter out any null organizations
   }
 
   async getUserRoleInOrganization(userId: number, organizationId: number): Promise<string> {
@@ -244,15 +245,27 @@ export class MemoryStorage implements IStorage {
     return userOrg?.role || 'member';
   }
 
-  async addUserToOrganization(userId: number, organizationId: number, role: string): Promise<UserOrganization> {
-    const userOrg: UserOrganization = {
-      id: this.nextId++,
+  async addUserToOrganization(userId: number, organizationId: number, role: string = 'member'): Promise<void> {
+    // Check if relationship already exists
+    const existingRelation = this.userOrganizations.find(
+      uo => uo.userId === userId && uo.organizationId === organizationId
+    );
+
+    if (existingRelation) {
+      // Update role if different
+      if (existingRelation.role !== role) {
+        existingRelation.role = role;
+      }
+      return;
+    }
+
+    const relation = {
+      id: this.userOrganizations.length + 1,
       userId,
       organizationId,
       role,
       joinedAt: new Date()
     };
-    this.userOrganizations.push(userOrg);
-    return userOrg;
+    this.userOrganizations.push(relation);
   }
 }

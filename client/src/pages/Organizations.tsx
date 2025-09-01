@@ -316,10 +316,10 @@ export default function Organizations() {
               </CardHeader>
               <CardContent className="text-center">
                 <p className="text-neutral-600 mb-4">
-                  You are a member of {Array.isArray(userOrganizations) ? userOrganizations.length : 0} organization(s).
+                  You are a member of {Array.isArray(userOrganizations) ? userOrganizations.filter(org => org && org.id).length : 0} organization(s).
                 </p>
                 <div className="text-2xl font-bold text-primary mb-4">
-                  {Array.isArray(userOrganizations) ? userOrganizations.length : 0}
+                  {Array.isArray(userOrganizations) ? userOrganizations.filter(org => org && org.id).length : 0}
                 </div>
                 <p className="text-sm text-neutral-500">
                   View details and switch between organizations below
@@ -359,6 +359,9 @@ export default function Organizations() {
                               </h3>
                               <p className="text-sm text-neutral-600">
                                 {org.description || 'No description'}
+                              </p>
+                              <p className="text-xs text-neutral-500">
+                                Joined: {new Date(org.joinedAt).toLocaleDateString()}
                               </p>
                             </div>
                           </div>
