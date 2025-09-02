@@ -356,6 +356,127 @@ function getResponseForIntent(intent: Intent): string {
   return responses[Math.floor(Math.random() * responses.length)];
 }
 
+// Fallback function for intelligent summarization when AI is unavailable
+function generateFallbackSummary(complaints: any[], similarityGroup: string): {
+  summary: string;
+  keyIssues: string[];
+  affectedCount: number;
+  urgencyLevel: 'low' | 'medium' | 'high';
+} {
+  const uniqueUsers = new Set(complaints.map(c => c.userId)).size;
+  const categories = [...new Set(complaints.map(c => c.category))];
+  const statuses = complaints.reduce((acc: any, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Analyze complaint content for common themes
+  const allContent = complaints.map(c => c.content.toLowerCase()).join(' ');
+  const commonWords = extractKeywords(allContent);
+  
+  // Generate summary based on similarity group and content analysis
+  let summary = '';
+  let keyIssues: string[] = [];
+  let urgencyLevel: 'low' | 'medium' | 'high' = 'medium';
+
+  // Determine urgency based on count and status
+  if (complaints.length >= 5 || statuses.escalated > 0) {
+    urgencyLevel = 'high';
+  } else if (complaints.length >= 3) {
+    urgencyLevel = 'medium';
+  } else {
+    urgencyLevel = 'low';
+  }
+
+  // Generate contextual summary based on similarity group
+  if (similarityGroup.toLowerCase().includes('wifi') || similarityGroup.toLowerCase().includes('internet') || similarityGroup.toLowerCase().includes('connectivity')) {
+    summary = `${uniqueUsers} employees experiencing network connectivity issues affecting productivity and daily operations`;
+    keyIssues = [
+      'Internet/WiFi connectivity problems',
+      'Work disruption and productivity loss',
+      'Need immediate IT investigation',
+      'Potential infrastructure upgrade required'
+    ];
+  } else if (similarityGroup.toLowerCase().includes('harassment') || similarityGroup.toLowerCase().includes('discrimination')) {
+    summary = `${uniqueUsers} employees reporting workplace harassment or discrimination incidents requiring immediate HR intervention`;
+    keyIssues = [
+      'Workplace harassment/discrimination reported',
+      'Employee safety and wellbeing at risk',
+      'Immediate HR investigation required',
+      'Policy enforcement needed'
+    ];
+    urgencyLevel = 'high';
+  } else if (similarityGroup.toLowerCase().includes('manager') || similarityGroup.toLowerCase().includes('management')) {
+    summary = `${uniqueUsers} employees raising concerns about management practices affecting workplace culture and productivity`;
+    keyIssues = [
+      'Management practice concerns',
+      'Leadership communication issues',
+      'Employee morale impact',
+      'Need management training or intervention'
+    ];
+  } else if (similarityGroup.toLowerCase().includes('cafeteria') || similarityGroup.toLowerCase().includes('food')) {
+    summary = `${uniqueUsers} employees reporting cafeteria service issues affecting meal satisfaction and workplace amenities`;
+    keyIssues = [
+      'Food quality and service problems',
+      'Employee satisfaction with amenities',
+      'Vendor performance review needed',
+      'Dietary accommodation concerns'
+    ];
+  } else if (similarityGroup.toLowerCase().includes('security') || similarityGroup.toLowerCase().includes('safety')) {
+    summary = `${uniqueUsers} employees reporting security or safety concerns requiring immediate attention to ensure workplace safety`;
+    keyIssues = [
+      'Workplace security/safety issues',
+      'Employee safety at risk',
+      'Security protocol review needed',
+      'Immediate safety assessment required'
+    ];
+    urgencyLevel = 'high';
+  } else {
+    // Generic summary based on content analysis
+    const topKeywords = commonWords.slice(0, 3).join(', ');
+    summary = `${uniqueUsers} employees reporting similar workplace issues involving ${topKeywords} affecting work environment and productivity`;
+    keyIssues = [
+      `Common issues related to: ${topKeywords}`,
+      'Multiple employees affected',
+      'Pattern of similar complaints identified',
+      'Root cause analysis recommended'
+    ];
+  }
+
+  // Add status-based insights
+  if (statuses.escalated > 0) {
+    keyIssues.push(`${statuses.escalated} complaint(s) already escalated to management`);
+  }
+  if (statuses.pending > 2) {
+    keyIssues.push(`${statuses.pending} pending complaints require immediate attention`);
+  }
+
+  return {
+    summary,
+    keyIssues,
+    affectedCount: uniqueUsers,
+    urgencyLevel
+  };
+}
+
+// Helper function to extract keywords from text
+function extractKeywords(text: string): string[] {
+  const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'cannot', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'her', 'its', 'our', 'their']);
+  
+  const words = text.toLowerCase().match(/\b\w+\b/g) || [];
+  const wordCounts = words.reduce((acc: any, word) => {
+    if (!stopWords.has(word) && word.length > 2) {
+      acc[word] = (acc[word] || 0) + 1;
+    }
+    return acc;
+  }, {});
+  
+  return Object.entries(wordCounts)
+    .sort(([,a]: any, [,b]: any) => b - a)
+    .slice(0, 10)
+    .map(([word]) => word);
+}
+
 export async function summarizeComplaintGroup(complaints: any[], similarityGroup: string): Promise<{
   summary: string;
   keyIssues: string[];
@@ -423,12 +544,9 @@ Respond with JSON in this exact format:
     };
   } catch (error) {
     console.error('Error summarizing complaint group:', error);
-    return {
-      summary: `${complaints.length} similar complaints regarding ${similarityGroup}`,
-      keyIssues: ['Multiple employees affected', 'Requires attention'],
-      affectedCount: complaints.length,
-      urgencyLevel: 'medium'
-    };
+    
+    // Use intelligent fallback when AI API fails
+    return generateFallbackSummary(complaints, similarityGroup);
   }
 }
 
