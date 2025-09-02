@@ -367,6 +367,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueUsersInGroup = new Set(similarComplaints.map(c => c.userId)).size;
       const groupPercentage = totalMembers > 0 ? (uniqueUsersInGroup / totalMembers) * 100 : 0;
 
+      console.log(`Threshold check - Group: ${similarityGroup}, Unique users complained: ${uniqueUsersInGroup}, Total members: ${totalMembers}, Percentage: ${groupPercentage.toFixed(2)}%, Threshold: ${threshold}%`);
+
       // Auto-escalate if threshold is reached
       if (groupPercentage >= threshold) {
         // Escalate all pending complaints in this similarity group
@@ -593,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         groups: groupSummaries,
         threshold,
-        totalComplaints,
+        totalComplaints: complaints.length,
         escalationGroups: groupSummaries.filter(g => g.shouldEscalate).length
       });
     } catch (error) {
@@ -776,7 +778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Auto-escalate if threshold is reached and there are pending complaints
             if (groupPercentage >= threshold && similarComplaints.some(c => c.status === 'pending')) {
-              console.log(`Confirmation Auto-escalating ${similarComplaints.length} complaints in group "${similarityGroup}"`);
+              console.log(`Confirmation Auto-escalating ${similarComplaints.filter(c => c.status === 'pending').length} complaints in group "${similarityGroup}"`);
               for (const similarComplaint of similarComplaints.filter(c => c.status === 'pending')) {
                 await storage.updateComplaintStatus(similarComplaint.id, 'escalated');
               }
