@@ -455,7 +455,8 @@ function generateFallbackSummary(complaints: any[], similarityGroup: string): {
     summary,
     keyIssues,
     affectedCount: uniqueUsers,
-    urgencyLevel
+    urgencyLevel,
+    isFromAI: false // Indicates this is a fallback summary
   };
 }
 
@@ -540,7 +541,8 @@ Respond with JSON in this exact format:
       summary: result.summary || 'Multiple complaints received on this topic',
       keyIssues: result.keyIssues || ['Workplace concern identified'],
       affectedCount: result.affectedCount || complaints.length,
-      urgencyLevel: result.urgencyLevel || 'medium'
+      urgencyLevel: result.urgencyLevel || 'medium',
+      isFromAI: true // Indicates this is from actual AI
     };
   } catch (error) {
     console.error('Error summarizing complaint group:', error);

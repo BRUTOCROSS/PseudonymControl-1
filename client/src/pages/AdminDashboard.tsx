@@ -344,23 +344,52 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* Show AI Summary for escalated groups, individual complaints for others */}
-                      {group.shouldEscalate && group.aiSummary ? (
+                      {/* Always show AI Summary if available, regardless of escalation status */}
+                      {group.aiSummary ? (
                         <div className="space-y-4">
-                          {/* AI Summary Section - Concise Executive View */}
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                          {/* AI Summary Section - Always show when available */}
+                          <div className={`bg-gradient-to-r border rounded-lg p-4 ${
+                            group.shouldEscalate 
+                              ? 'from-red-50 to-pink-50 border-red-200' 
+                              : group.exceedsThreshold
+                                ? 'from-amber-50 to-yellow-50 border-amber-200'
+                                : 'from-blue-50 to-indigo-50 border-blue-200'
+                          }`}>
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <h4 className="font-semibold text-blue-900 flex items-center mb-2">
+                                <h4 className={`font-semibold flex items-center mb-2 ${
+                                  group.shouldEscalate 
+                                    ? 'text-red-900' 
+                                    : group.exceedsThreshold
+                                      ? 'text-amber-900'
+                                      : 'text-blue-900'
+                                }`}>
                                   <Brain size={16} className="mr-2" />
-                                  AI Executive Summary
+                                  {group.shouldEscalate ? 'URGENT AI Analysis' : 'AI Summary'}
+                                  {!group.aiSummary?.isFromAI && (
+                                    <Badge variant="outline" className="ml-2 text-xs">
+                                      Intelligent Fallback
+                                    </Badge>
+                                  )}
                                 </h4>
                                 <div className="bg-white/60 rounded p-3 mb-3">
-                                  <p className="text-blue-800 font-medium text-base leading-relaxed">
+                                  <p className={`font-medium text-base leading-relaxed ${
+                                    group.shouldEscalate 
+                                      ? 'text-red-800' 
+                                      : group.exceedsThreshold
+                                        ? 'text-amber-800'
+                                        : 'text-blue-800'
+                                  }`}>
                                     💡 {group.aiSummary.summary}
                                   </p>
                                 </div>
-                                <div className="text-sm text-blue-600">
+                                <div className={`text-sm ${
+                                  group.shouldEscalate 
+                                    ? 'text-red-600' 
+                                    : group.exceedsThreshold
+                                      ? 'text-amber-600'
+                                      : 'text-blue-600'
+                                }`}>
                                   <strong>{group.aiSummary.affectedCount}</strong> employees affected • 
                                   Key issues: {group.aiSummary.keyIssues.slice(0, 2).join(', ')}
                                   {group.aiSummary.keyIssues.length > 2 && ` +${group.aiSummary.keyIssues.length - 2} more`}
@@ -375,7 +404,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          {/* Quick Actions for Escalated Group */}
+                          {/* Action buttons for any group with AI summary */}
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-neutral-600">
                               {group.count} similar complaints in this group
@@ -385,21 +414,23 @@ export default function AdminDashboard() {
                                 <Eye size={16} className="mr-2" />
                                 View All Details
                               </Button>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => {
-                                  // Mark all as resolved
-                                  group.complaints.forEach((complaint: any) => {
-                                    if (complaint.status === 'escalated') {
-                                      updateStatusMutation.mutate({ id: complaint.id, status: 'resolved' });
-                                    }
-                                  });
-                                }}
-                              >
-                                <CheckCircle size={16} className="mr-2" />
-                                Resolve All
-                              </Button>
+                              {group.shouldEscalate && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => {
+                                    // Mark all escalated complaints as resolved
+                                    group.complaints.forEach((complaint: any) => {
+                                      if (complaint.status === 'escalated') {
+                                        updateStatusMutation.mutate({ id: complaint.id, status: 'resolved' });
+                                      }
+                                    });
+                                  }}
+                                >
+                                  <CheckCircle size={16} className="mr-2" />
+                                  Resolve All
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
