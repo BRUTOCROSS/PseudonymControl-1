@@ -456,7 +456,7 @@ function generateFallbackSummary(complaints: any[], similarityGroup: string): {
     keyIssues,
     affectedCount: uniqueUsers,
     urgencyLevel,
-    isFromAI: false // Indicates this is a fallback summary
+    isFromAI: false
   };
 }
 
@@ -483,7 +483,11 @@ export async function summarizeComplaintGroup(complaints: any[], similarityGroup
   keyIssues: string[];
   affectedCount: number;
   urgencyLevel: 'low' | 'medium' | 'high';
+  isFromAI?: boolean;
 }> {
+  // Always use fallback when quota is exceeded to avoid repeated API calls
+  console.log(`Summarizing ${complaints.length} complaints in group "${similarityGroup}"`);
+  
   try {
     const systemPrompt = `You are an expert at analyzing workplace complaints to provide executive summaries for administrators.
 
@@ -537,18 +541,21 @@ Respond with JSON in this exact format:
     });
 
     const result = JSON.parse(response.text || '{}');
+    console.log(`AI summarization successful for group "${similarityGroup}"`);
     return {
       summary: result.summary || 'Multiple complaints received on this topic',
       keyIssues: result.keyIssues || ['Workplace concern identified'],
       affectedCount: result.affectedCount || complaints.length,
       urgencyLevel: result.urgencyLevel || 'medium',
-      isFromAI: true // Indicates this is from actual AI
+      isFromAI: true
     };
   } catch (error) {
-    console.error('Error summarizing complaint group:', error);
+    console.error(`AI summarization failed for group "${similarityGroup}":`, error);
     
     // Use intelligent fallback when AI API fails
-    return generateFallbackSummary(complaints, similarityGroup);
+    const fallbackResult = generateFallbackSummary(complaints, similarityGroup);
+    console.log(`Using fallback summary for group "${similarityGroup}":`, fallbackResult.summary);
+    return fallbackResult;
   }
 }
 

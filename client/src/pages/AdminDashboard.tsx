@@ -22,7 +22,8 @@ import {
   Users,
   FileText,
   Eye,
-  Brain
+  Brain,
+  Sparkles
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 
@@ -347,62 +348,47 @@ export default function AdminDashboard() {
                       {/* Always show AI Summary if available, regardless of escalation status */}
                       {group.aiSummary ? (
                         <div className="space-y-4">
-                          {/* AI Summary Section - Always show when available */}
-                          <div className={`bg-gradient-to-r border rounded-lg p-4 ${
-                            group.shouldEscalate 
-                              ? 'from-red-50 to-pink-50 border-red-200' 
-                              : group.exceedsThreshold
-                                ? 'from-amber-50 to-yellow-50 border-amber-200'
-                                : 'from-blue-50 to-indigo-50 border-blue-200'
-                          }`}>
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h4 className={`font-semibold flex items-center mb-2 ${
-                                  group.shouldEscalate 
-                                    ? 'text-red-900' 
-                                    : group.exceedsThreshold
-                                      ? 'text-amber-900'
-                                      : 'text-blue-900'
-                                }`}>
+                          {/* AI Summary Section */}
+                          {group.aiSummary ? (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                              <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
+                                {group.aiSummary.isFromAI !== false ? (
+                                  <Sparkles size={16} className="mr-2" />
+                                ) : (
                                   <Brain size={16} className="mr-2" />
-                                  {group.shouldEscalate ? 'URGENT AI Analysis' : 'AI Summary'}
-                                  {!group.aiSummary?.isFromAI && (
-                                    <Badge variant="outline" className="ml-2 text-xs">
-                                      Intelligent Fallback
-                                    </Badge>
-                                  )}
-                                </h4>
-                                <div className="bg-white/60 rounded p-3 mb-3">
-                                  <p className={`font-medium text-base leading-relaxed ${
-                                    group.shouldEscalate 
-                                      ? 'text-red-800' 
-                                      : group.exceedsThreshold
-                                        ? 'text-amber-800'
-                                        : 'text-blue-800'
-                                  }`}>
-                                    💡 {group.aiSummary.summary}
-                                  </p>
+                                )}
+                                {group.aiSummary.isFromAI !== false ? 'AI Analysis Summary' : 'Automated Analysis Summary'}
+                              </h4>
+                              <p className="text-blue-800 mb-3">{group.aiSummary.summary}</p>
+                              {group.aiSummary.keyIssues && group.aiSummary.keyIssues.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-blue-900 mb-2">Key Issues Identified:</p>
+                                  <ul className="list-disc list-inside text-blue-800 space-y-1">
+                                    {group.aiSummary.keyIssues.map((issue: string, idx: number) => (
+                                      <li key={idx}>{issue}</li>
+                                    ))}
+                                  </ul>
                                 </div>
-                                <div className={`text-sm ${
-                                  group.shouldEscalate 
-                                    ? 'text-red-600' 
-                                    : group.exceedsThreshold
-                                      ? 'text-amber-600'
-                                      : 'text-blue-600'
+                              )}
+                              <div className="mt-3 flex items-center space-x-4 text-sm text-blue-700">
+                                <span>Affected Users: {group.aiSummary.affectedCount}</span>
+                                <span className={`px-2 py-1 rounded ${
+                                  group.aiSummary.urgencyLevel === 'high' ? 'bg-red-100 text-red-800' :
+                                  group.aiSummary.urgencyLevel === 'medium' ? 'bg-amber-100 text-amber-800' :
+                                  'bg-green-100 text-green-800'
                                 }`}>
-                                  <strong>{group.aiSummary.affectedCount}</strong> employees affected • 
-                                  Key issues: {group.aiSummary.keyIssues.slice(0, 2).join(', ')}
-                                  {group.aiSummary.keyIssues.length > 2 && ` +${group.aiSummary.keyIssues.length - 2} more`}
-                                </div>
+                                  {group.aiSummary.urgencyLevel.toUpperCase()} URGENCY
+                                </span>
+                                {group.aiSummary.isFromAI === false && (
+                                  <span className="text-xs text-blue-600">(Fallback Analysis)</span>
+                                )}
                               </div>
-                              <Badge variant={
-                                group.aiSummary.urgencyLevel === 'high' ? 'destructive' :
-                                group.aiSummary.urgencyLevel === 'medium' ? 'secondary' : 'outline'
-                              } className="ml-3">
-                                {group.aiSummary.urgencyLevel.toUpperCase()} PRIORITY
-                              </Badge>
                             </div>
-                          </div>
+                          ) : (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                              <p className="text-gray-600 text-sm">Analysis summary not available</p>
+                            </div>
+                          )}
 
                           {/* Action buttons for any group with AI summary */}
                           <div className="flex items-center justify-between">
