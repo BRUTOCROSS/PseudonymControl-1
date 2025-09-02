@@ -353,13 +353,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all complaints for this organization to calculate percentage
       const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
 
-      // Filter out complaints from admin users for threshold calculation
+      // Get organization members for proper threshold calculation
       const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
-      const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
+      const nonAdminUsers = orgUsers.filter(u => !u.isAdmin);
+      const totalMembers = nonAdminUsers.length;
+
+      // Filter complaints from non-admin users only
+      const nonAdminUserIds = nonAdminUsers.map(u => u.id);
       const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
 
       const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
-      const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
+      // Calculate percentage based on number of members who complained about this issue
+      const uniqueUsersInGroup = new Set(similarComplaints.map(c => c.userId)).size;
+      const groupPercentage = totalMembers > 0 ? (uniqueUsersInGroup / totalMembers) * 100 : 0;
 
       // Auto-escalate if threshold is reached
       if (groupPercentage >= threshold) {
@@ -537,10 +543,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return groups;
       }, {});
 
-      // Get organization threshold
+      // Get organization threshold and member count
       const organization = await storage.getOrganization(user.organizationId);
       const threshold = organization?.thresholdPercentage || 15;
-      const totalComplaints = nonAdminComplaints.length; // Use non-admin complaints for threshold calculation
+      const totalMembers = orgUsers.filter(u => !u.isAdmin).length; // Use member count for threshold calculation
 
       // Create summaries for each group and check thresholds
       const { summarizeComplaintGroup } = await import("./services/gemini");
@@ -548,9 +554,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const [similarityGroup, groupComplaints] of Object.entries(groupedComplaints)) {
         const complaintsArray = groupComplaints as any[];
-        // Calculate percentage based on non-admin complaints only
+        // Calculate percentage based on unique members who complained about this issue
         const nonAdminGroupComplaints = complaintsArray.filter(c => nonAdminUserIds.includes(c.userId));
-        const groupPercentage = totalComplaints > 0 ? (nonAdminGroupComplaints.length / totalComplaints) * 100 : 0;
+        const uniqueUsersInGroup = new Set(nonAdminGroupComplaints.map(c => c.userId)).size;
+        const groupPercentage = totalMembers > 0 ? (uniqueUsersInGroup / totalMembers) * 100 : 0;
         const shouldEscalate = groupPercentage >= threshold && complaintsArray.some(c => c.status === 'pending');
 
         // Generate AI summary for this group
@@ -753,13 +760,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get fresh data after creating the complaint
             const updatedOrgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
             const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
-            const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
+            const nonAdminUsers = orgUsers.filter(u => !u.isAdmin);
+            const totalMembers = nonAdminUsers.length;
+
+            // Filter complaints from non-admin users only
+            const nonAdminUserIds = nonAdminUsers.map(u => u.id);
             const nonAdminComplaints = updatedOrgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
 
             const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
-            const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
+            // Calculate percentage based on number of members who complained about this issue
+            const uniqueUsersInGroup = new Set(similarComplaints.map(c => c.userId)).size;
+            const groupPercentage = totalMembers > 0 ? (uniqueUsersInGroup / totalMembers) * 100 : 0;
 
-            console.log(`Confirmation Threshold check - Group: ${similarityGroup}, Similar complaints: ${similarComplaints.length}, Total non-admin complaints: ${nonAdminComplaints.length}, Percentage: ${groupPercentage.toFixed(2)}%, Threshold: ${threshold}%`);
+            console.log(`Confirmation Threshold check - Group: ${similarityGroup}, Unique users complained: ${uniqueUsersInGroup}, Total members: ${totalMembers}, Percentage: ${groupPercentage.toFixed(2)}%, Threshold: ${threshold}%`);
 
             // Auto-escalate if threshold is reached and there are pending complaints
             if (groupPercentage >= threshold && similarComplaints.some(c => c.status === 'pending')) {
@@ -775,7 +788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ? "URGENT: Complaint Group Auto-Escalated" 
               : "New Complaint Submitted";
             const notificationMessage = groupPercentage >= threshold
-              ? `${similarComplaints.length} complaints about "${similarityGroup}" have been auto-escalated (${groupPercentage.toFixed(1)}% of total complaints)`
+              ? `${uniqueUsersInGroup} members (${groupPercentage.toFixed(1)}% of organization) have complained about "${similarityGroup}" - auto-escalated`
               : `A new ${finalCategory} complaint has been submitted`;
 
             for (const admin of admins.filter(u => u.isAdmin)) {
@@ -798,7 +811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 - **Anonymous ID:** ${user.pseudonym}
 
 ${groupPercentage >= threshold ? 
-`🚨 **IMPORTANT:** Your complaint has triggered automatic escalation! ${similarComplaints.length} similar complaints (${groupPercentage.toFixed(1)}% of organization) have been escalated to management for urgent attention.` :
+`🚨 **IMPORTANT:** Your complaint has triggered automatic escalation! ${uniqueUsersInGroup} members (${groupPercentage.toFixed(1)}% of organization) have complained about this issue - escalated to management for urgent attention.` :
 `Your complaint is now in the system and being reviewed by administrators. You'll receive notifications about status updates.`}
 
 You can track the progress anytime in the 'My Complaints' section of your dashboard. Is there anything else I can help you with?`;
@@ -845,11 +858,17 @@ You can track the progress anytime in the 'My Complaints' section of your dashbo
 
           const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
           const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
-          const nonAdminUserIds = orgUsers.filter(u => !u.isAdmin).map(u => u.id);
+          const nonAdminUsers = orgUsers.filter(u => !u.isAdmin);
+          const totalMembers = nonAdminUsers.length;
+
+          // Filter complaints from non-admin users only
+          const nonAdminUserIds = nonAdminUsers.map(u => u.id);
           const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
 
           const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
-          const groupPercentage = nonAdminComplaints.length > 0 ? (similarComplaints.length / nonAdminComplaints.length) * 100 : 0;
+          // Calculate percentage based on number of members who complained about this issue
+          const uniqueUsersInGroup = new Set(similarComplaints.map(c => c.userId)).size;
+          const groupPercentage = totalMembers > 0 ? (uniqueUsersInGroup / totalMembers) * 100 : 0;
 
           // Auto-escalate if threshold is reached
           if (groupPercentage >= threshold) {
