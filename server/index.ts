@@ -11,7 +11,7 @@ app.use((req, res, next) => {
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-  const originalResJson = res.json;
+  const originalResJson = res.js.on;
   res.json = function (bodyJson, ...args) {
     capturedJsonResponse = bodyJson;
     return originalResJson.apply(res, [bodyJson, ...args]);
