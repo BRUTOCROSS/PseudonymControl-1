@@ -1,0 +1,53 @@
+System Flow Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         USER LAYER                          │
+├─────────────────────────────────────────────────────────────┤
+│  Landing Page → Auth (Login/Register) → Organization Setup  │
+│                                                              │
+│  User Dashboard              Admin Dashboard                │
+│  └── Chat Interface          └── Analytics & Management     │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      FRONTEND (React)                       │
+├─────────────────────────────────────────────────────────────┤
+│  • Auth Context (useAuth)                                   │
+│  • React Query (data fetching)                              │
+│  • Wouter (routing)                                         │
+│  • Tailwind + shadcn/ui                                     │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    API LAYER (Express)                      │
+├─────────────────────────────────────────────────────────────┤
+│  POST /api/auth/register                                    │
+│  POST /api/auth/login                                       │
+│  POST /api/organizations                                    │
+│  POST /api/complaints                                       │
+│  POST /api/chat                                             │
+│  GET  /api/complaints (with filters)                        │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   BUSINESS LOGIC LAYER                      │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────────┐  ┌──────────────────────────────┐    │
+│  │  Gemini AI       │  │  Pattern Detection           │    │
+│  │  ────────────    │  │  ──────────────────          │    │
+│  │  • Intent        │  │  • Category Classification   │    │
+│  │    Recognition   │  │  • Similarity Grouping       │    │
+│  │  • Context Chat  │  │  • Threshold Checking        │    │
+│  │  • Responses     │  │  • Auto-escalation          │    │
+│  └──────────────────┘  └──────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   DATA LAYER (PostgreSQL)                   │
+├─────────────────────────────────────────────────────────────┤
+│  Users → Organizations → Complaints                         │
+│    |                          |                             │
+│  pseudonym              category, similarityGroup           │
+│  orgId                  status, escalated                   │
+└─────────────────────────────────────────────────────────────┘
