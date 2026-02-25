@@ -285,55 +285,27 @@ export default function AdminDashboard() {
               {groupedComplaints?.groups && groupedComplaints.groups.length > 0 ? (
                 <div className="space-y-6">
                   {groupedComplaints.groups.map((group: any, index: number) => (
-                    <div key={group.similarityGroup} className={`border rounded-lg p-5 ${
-                      group.shouldEscalate
-                        ? 'border-red-200 bg-red-50'
-                        : group.exceedsThreshold
-                          ? 'border-amber-200 bg-amber-50'
-                          : 'border-neutral-200'
-                    }`}>
+                    <div key={group.similarityGroup} className="border border-red-200 bg-red-50 rounded-lg p-5">
                       {/* Group Header */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className={`p-2 rounded-full ${
-                            group.shouldEscalate
-                              ? 'bg-red-100 text-red-600'
-                              : group.exceedsThreshold
-                                ? 'bg-amber-100 text-amber-600'
-                                : 'bg-blue-100 text-blue-600'
-                          }`}>
-                            {group.shouldEscalate ? (
-                              <AlertTriangle size={16} />
-                            ) : (
-                              <Users size={16} />
-                            )}
+                          <div className="p-2 rounded-full bg-red-100 text-red-600">
+                            <AlertTriangle size={16} />
                           </div>
                           <div>
                             <h3 className="font-semibold text-neutral-800 capitalize">
                               {group.similarityGroup.replace(/-/g, ' ')}
                             </h3>
-                            {group.aiSummary ? (
-                              <p className="text-sm text-neutral-700 font-medium mb-1">
-                                📋 {group.aiSummary.summary}
-                              </p>
-                            ) : null}
                             <p className="text-sm text-neutral-500">
-                              {group.count} complaints • {group.percentage}% of total
+                              Impact: {group.percentage}% of members • {group.count} reports
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center space-x-2">
-                          {group.shouldEscalate && (
-                            <Badge variant="destructive" className="animate-pulse">
-                              REQUIRES ESCALATION
-                            </Badge>
-                          )}
-                          {group.exceedsThreshold && !group.shouldEscalate && (
-                            <Badge variant="outline" className="border-amber-500 text-amber-700">
-                              Above Threshold ({currentOrg?.thresholdPercentage || 0}%)
-                            </Badge>
-                          )}
+                          <Badge variant="destructive" className="animate-pulse">
+                            CRITICAL THRESHOLD MET
+                          </Badge>
                           {group.aiSummary?.urgencyLevel && (
                             <Badge variant={
                               group.aiSummary.urgencyLevel === 'high' ? 'destructive' :

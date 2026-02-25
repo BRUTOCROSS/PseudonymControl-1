@@ -566,7 +566,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const nonAdminGroupComplaints = complaintsArray.filter(c => nonAdminUserIds.includes(c.userId));
         const uniqueUsersInGroup = new Set(nonAdminGroupComplaints.map(c => c.userId)).size;
         const groupPercentage = totalMembers > 0 ? (uniqueUsersInGroup / totalMembers) * 100 : 0;
-        const shouldEscalate = groupPercentage >= threshold && complaintsArray.some(c => c.status === 'pending');
+        
+        // ONLY escalate and show if threshold is met/exceeded
+        const exceedsThreshold = groupPercentage >= threshold;
+        const shouldEscalate = exceedsThreshold && (complaintsArray.some(c => c.status === 'pending') || complaintsArray.some(c => c.status === 'escalated'));
+
+        // If it doesn't exceed threshold, we skip adding it to the summarized view for admins
+        if (!exceedsThreshold) continue;
 
         // Generate AI summary for this group
         let aiSummary = null;
