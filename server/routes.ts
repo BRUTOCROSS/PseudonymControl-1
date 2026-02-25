@@ -328,9 +328,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           similarityGroup = aiResult.similarityGroup;
         } catch (error) {
           console.error("AI categorization failed:", error);
-          // Fallback to 'other' category
+          // Fixed: Use a more deterministic fallback for similarity grouping
+          // If content is very similar, it should end up in the same group even on fallback
           finalCategory = 'other';
-          similarityGroup = 'general-concerns';
+          const words = content.toLowerCase().trim().split(/\s+/).slice(0, 3).join('-');
+          similarityGroup = words || 'general-concerns';
         }
       }
 
