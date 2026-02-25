@@ -52,7 +52,13 @@ export class MemoryStorage implements IStorage {
   }
 
   async getUsersByOrganizationId(organizationId: number): Promise<User[]> {
-    return this.users.filter(user => user.organizationId === organizationId);
+    // Get all user IDs belonging to this organization from the relationship table
+    const memberIds = this.userOrganizations
+      .filter(uo => uo.organizationId === organizationId)
+      .map(uo => uo.userId);
+    
+    // Return the full user objects for those IDs
+    return this.users.filter(user => memberIds.includes(user.id));
   }
 
   // Organization operations

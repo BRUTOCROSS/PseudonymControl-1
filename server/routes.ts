@@ -354,8 +354,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orgComplaints = await storage.getComplaintsByOrganizationId(user.organizationId);
 
       // Get organization members for proper threshold calculation
-      const orgUsers = await storage.getUsersByOrganizationId(user.organizationId);
-      const nonAdminUsers = orgUsers.filter(u => !u.isAdmin);
+      const allOrgUsers = await storage.getUsersByOrganizationId(user.organizationId);
+      
+      // Filter out admin users from the total member count for threshold calculation
+      const nonAdminUsers = allOrgUsers.filter(u => !u.isAdmin);
       const totalMembers = nonAdminUsers.length;
 
       // Filter complaints from non-admin users only
@@ -363,14 +365,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const nonAdminComplaints = orgComplaints.filter(c => nonAdminUserIds.includes(c.userId));
 
       const similarComplaints = nonAdminComplaints.filter(c => c.similarityGroup === similarityGroup);
-      // Calculate percentage based on number of members who complained about this issue
+      // Calculate percentage based on number of UNIQUE members who complained about this issue
       const uniqueUsersInGroup = new Set(similarComplaints.map(c => c.userId)).size;
+      
+      // FIXED: Ensure we have at least one member and the percentage actually EXCEEDS or EQUALS the threshold
       const groupPercentage = totalMembers > 0 ? (uniqueUsersInGroup / totalMembers) * 100 : 0;
 
       console.log(`Threshold check - Group: ${similarityGroup}, Unique users complained: ${uniqueUsersInGroup}, Total members: ${totalMembers}, Percentage: ${groupPercentage.toFixed(2)}%, Threshold: ${threshold}%`);
 
-      // Auto-escalate if threshold is reached
-      if (groupPercentage >= threshold) {
+      // Auto-escalate if threshold is reached AND we have more than 0 complaints
+      const isThresholdExceeded = groupPercentage >= threshold && uniqueUsersInGroup > 0;
+      
+      if (isThresholdExceeded) {
         // Escalate all pending complaints in this similarity group
         for (const similarComplaint of similarComplaints.filter(c => c.status === 'pending')) {
           await storage.updateComplaintStatus(similarComplaint.id, 'escalated');
@@ -378,12 +384,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create notification for admins
-      const admins = await storage.getUsersByOrganizationId(user.organizationId);
-      const notificationTitle = groupPercentage >= threshold 
+      const admins = allOrgUsers.filter(u => u.isAdmin);
+      const notificationTitle = isThresholdExceeded 
         ? "URGENT: Complaint Group Auto-Escalated" 
         : "New Complaint Submitted";
-      const notificationMessage = groupPercentage >= threshold
-        ? `${similarComplaints.length} complaints about "${similarityGroup}" have been auto-escalated (${groupPercentage.toFixed(1)}% of total complaints)`
+      const notificationMessage = isThresholdExceeded
+        ? `${similarComplaints.length} complaints about "${similarityGroup}" have been auto-escalated (${groupPercentage.toFixed(1)}% of total members)`
         : `A new ${finalCategory} complaint has been submitted`;
 
       for (const admin of admins.filter(u => u.isAdmin)) {
