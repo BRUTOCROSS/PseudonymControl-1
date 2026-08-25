@@ -5,6 +5,12 @@
       "source": "inf-sh/skills",
       "sourceType": "github",
       "computedHash": "220054a640e514d0bb5be4af7eb9b54f2205b2f6de6a85bd1561f0b0b06d6013"
+    },
+    "browser-use": {
+      "source": "browser-use/browser-use",
+      "sourceType": "github",
+      "skillPath": "skills/browser-use/SKILL.md",
+      "computedHash": "d85101b4c40540c938a1fc98c716a1ec114cd77bf22dfcb384134824b0a0c0b3"
     }
   }
 }
